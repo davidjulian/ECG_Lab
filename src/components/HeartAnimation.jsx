@@ -1,4 +1,5 @@
 ﻿import { useEffect, useRef, useMemo } from 'react'
+import { buildTissueEvents, createTissueRenderer } from '../lib/myocardialWaves'
 
 // ─── Multi-beat conducted-beat series ──────────────────────────────────────
 // A repeating multi-beat `waves` array (irregular SA firing, a fusion
@@ -710,15 +711,20 @@ const REPOL_TABLE = {
 }
 
 // ─── Main component ───────────────────────────────────────────────────────────
-export default function HeartAnimation({ clockRef, rhythmId, rhythm, className = '', width = 280, height = 330 }) {
+export default function HeartAnimation({ clockRef, rhythmId, rhythm, className = '', width = 280, height = 330, tissueWaves = false }) {
   const elRefs        = useRef({})
   const conductionMap = useMemo(() => buildConductionMap(rhythmId, rhythm.waves), [rhythmId, rhythm])
 
+  const tissueCanvas = useRef(null)
+  const tissueTiming = useMemo(() => buildTissueEvents(conductionMap, rhythm.waves), [conductionMap, rhythm])
+  const timingRef = useRef(tissueTiming)
+  useEffect(() => { timingRef.current = tissueTiming }, [tissueTiming])
   const mapRef = useRef(conductionMap)
   mapRef.current = conductionMap
 
   useEffect(() => {
     let rafId
+    const renderTissue = tissueWaves ? createTissueRenderer(tissueCanvas.current, elRefs.current) : null
 
     const frame = () => {
       const { tInCycle, cycleMs, nativeCycleMs } = clockRef.current
@@ -763,6 +769,7 @@ export default function HeartAnimation({ clockRef, rhythmId, rhythm, className =
 
       map.forEach(entry => {
         if (entry.state === 'meta') return
+        if (tissueWaves && ['ra', 'la', 'rv', 'lv', 'repolLV', 'repolRV', 'apex'].includes(entry.id)) return
 
         if (entry.state === 'blocked' || entry.state === 'blocked_flash') {
           const el = els[entry.id]
@@ -916,12 +923,13 @@ export default function HeartAnimation({ clockRef, rhythmId, rhythm, className =
         el.style.opacity = '1'
       })
 
+      if (renderTissue) renderTissue(tMs, nativeCycleMs ?? cycleMs, timingRef.current)
       rafId = requestAnimationFrame(frame)
     }
 
     rafId = requestAnimationFrame(frame)
     return () => cancelAnimationFrame(rafId)
-  }, [clockRef])
+  }, [clockRef, tissueWaves])
 
   const ref = id => el => { elRefs.current[id] = el }
 
@@ -1120,7 +1128,22 @@ export default function HeartAnimation({ clockRef, rhythmId, rhythm, className =
         <path id="shape-la" ref={ref('la')} data-region="atrium" d="m 435.43691,392.87032 c -8.21385,0.24489 -15.57905,4.47113 -22.68957,8.16073 -5.20806,3.06748 -7.14618,9.31748 -9.0819,14.6773 -2.97439,8.8707 -3.68746,18.67525 -0.6096,27.62177 3.04796,9.4328 9.61226,18.23181 18.8977,22.19059 10.61834,3.75523 22.1128,2.67039 33.15574,2.35251 6.53163,-0.55405 13.56663,-0.98239 19.21505,-4.66304 5.28519,-3.8507 6.48878,-10.8954 6.99529,-16.98655 0.49762,-12.71814 -2.96421,-25.66841 -9.90037,-36.35443 -7.14932,-10.72606 -20.23822,-15.79011 -32.65535,-16.88356 -1.10632,-0.0901 -2.21686,-0.13636 -3.32699,-0.11532 z" transform="scale(0.26458333)" fill="#532e2b" />
         <path d="m 435.43691,392.87032 c -8.21385,0.24489 -15.57905,4.47113 -22.68957,8.16073 -5.20806,3.06748 -7.14618,9.31748 -9.0819,14.6773 -2.97439,8.8707 -3.68746,18.67525 -0.6096,27.62177 3.04796,9.4328 9.61226,18.23181 18.8977,22.19059 10.61834,3.75523 22.1128,2.67039 33.15574,2.35251 6.53163,-0.55405 13.56663,-0.98239 19.21505,-4.66304 5.28519,-3.8507 6.48878,-10.8954 6.99529,-16.98655 0.49762,-12.71814 -2.96421,-25.66841 -9.90037,-36.35443 -7.14932,-10.72606 -20.23822,-15.79011 -32.65535,-16.88356 -1.10632,-0.0901 -2.21686,-0.13636 -3.32699,-0.11532 z" ref={ref('la_overlay')} transform="scale(0.26458333)" fill="none" clipPath="url(#clip-la)" style={{ opacity: 0 }} />
           <path d="m 435.43691,392.87032 c -8.21385,0.24489 -15.57905,4.47113 -22.68957,8.16073 -5.20806,3.06748 -7.14618,9.31748 -9.0819,14.6773 -2.97439,8.8707 -3.68746,18.67525 -0.6096,27.62177 3.04796,9.4328 9.61226,18.23181 18.8977,22.19059 10.61834,3.75523 22.1128,2.67039 33.15574,2.35251 6.53163,-0.55405 13.56663,-0.98239 19.21505,-4.66304 5.28519,-3.8507 6.48878,-10.8954 6.99529,-16.98655 0.49762,-12.71814 -2.96421,-25.66841 -9.90037,-36.35443 -7.14932,-10.72606 -20.23822,-15.79011 -32.65535,-16.88356 -1.10632,-0.0901 -2.21686,-0.13636 -3.32699,-0.11532 z" ref={ref('la_glow')} transform="scale(0.26458333)" fill="url(#grad-la)" clipPath="url(#clip-la)" style={{ opacity: 0 }} />
+        {tissueWaves && (
+          <foreignObject x="230" y="390" width="270" height="290" transform="scale(0.26458333)" pointerEvents="none" aria-hidden="true">
+            <canvas ref={tissueCanvas} style={{ width: 270, height: 290, display: 'block' }} />
+          </foreignObject>
+        )}
       </svg>
+      {tissueWaves && (
+        <div className="mt-2 max-w-[210px] text-[10px] leading-relaxed text-gray-400">
+          <div className="flex flex-wrap justify-center gap-x-3 gap-y-1" aria-label="Tissue color legend">
+            <span><span style={{ color: '#fde047' }}>●</span> Depolarizing</span>
+            <span><span style={{ color: '#df694c' }}>●</span> Depolarized</span>
+            <span><span style={{ color: '#38bdf8' }}>●</span> Repolarizing</span>
+          </div>
+          <p className="mt-1 text-center">Schematic waves; resting tissue returns to brown.</p>
+        </div>
+      )}
     </div>
   )
 }

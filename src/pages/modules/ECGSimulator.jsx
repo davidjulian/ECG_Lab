@@ -475,6 +475,7 @@ export default function ECGSimulator() {
             </div>
             <div className="flex gap-3 items-center">
               <HeartAnimation
+                tissueWaves
                 clockRef={heartClockRef}
                 rhythmId={rhythmId}
                 rhythm={physRhythm}
