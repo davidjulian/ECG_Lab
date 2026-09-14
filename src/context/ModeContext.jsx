@@ -36,10 +36,7 @@ export const MODULE_INFO = {
 }
 
 export function ModeProvider({ children }) {
-  const [mode, setModeState] = useState(() => {
-    const saved = readProgress('mode', null)
-    return ['lab', 'free'].includes(saved) ? saved : null
-  })
+  const mode = 'free'
   const [progress, setProgress] = useState(() => {
     const saved = readProgress('completed', [])
     return new Set(Array.isArray(saved) ? saved.filter(id => MODULE_ORDER.includes(id)) : [])
@@ -52,12 +49,6 @@ export function ModeProvider({ children }) {
     if (!modeSaved || !progressSaved) console.warn("Browser progress storage is unavailable.")
   }, [mode, progress])
 
-  const setMode = (nextMode) => {
-    if (['lab', 'free'].includes(nextMode)) {
-      setStorageAvailable(writeProgress('mode', nextMode))
-      setModeState(nextMode)
-    }
-  }
   const markComplete = (moduleId) => {
     if (MODULE_ORDER.includes(moduleId)) {
       const updated = new Set([...progress, moduleId])
@@ -70,7 +61,7 @@ export function ModeProvider({ children }) {
     return index >= 0 && MODULE_ORDER.slice(0, index).every(id => progress.has(id))
   }
   return (
-    <ModeContext.Provider value={{ mode, setMode, progress, markComplete, isUnlocked, loadingMode: false, storageAvailable }}>
+    <ModeContext.Provider value={{ mode, progress, markComplete, isUnlocked, loadingMode: false, storageAvailable }}>
       {children}
     </ModeContext.Provider>
   )

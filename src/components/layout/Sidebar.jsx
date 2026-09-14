@@ -1,4 +1,4 @@
-﻿import { useLocation, useNavigate, NavLink } from 'react-router-dom'
+﻿import { useLocation, NavLink } from 'react-router-dom'
 import { useMode, MODULE_ORDER, MODULE_INFO, MODE_ACCENT } from '../../context/ModeContext'
 import AboutModal from '../AboutModal'
 import { useModuleTabsContext } from '../../context/ModuleTabsContext'
@@ -6,12 +6,10 @@ import { useModuleTabsContext } from '../../context/ModuleTabsContext'
 // Small SVG icons defined inline so we don't need an icon library yet
 function CheckIcon()  { return <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/></svg> }
 function LockIcon()   { return <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/></svg> }
-function SwitchIcon() { return <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg> }
 
 export default function Sidebar({ isLabMode }) {
   const { progress, isUnlocked, storageAvailable } = useMode()
   const location    = useLocation()
-  const navigate    = useNavigate()
   const { tabInfo } = useModuleTabsContext()
 
   const accent    = MODE_ACCENT[isLabMode ? 'lab' : 'free']   // purple for Lab, teal for Free Play
@@ -141,13 +139,7 @@ export default function Sidebar({ isLabMode }) {
       <div className="px-2 py-3 border-t border-gray-800 space-y-0.5">
         {!storageAvailable && <p role="status" className="px-3 py-2 text-xs text-amber-400">Browser storage is unavailable. Progress lasts for this session only.</p>}
         <AboutModal />
-        <button
-          onClick={() => navigate('/mode')}
-          className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-gray-500 hover:text-gray-300 hover:bg-gray-800/60 transition-colors text-xs text-left"
-        >
-          <SwitchIcon />
-          Switch mode
-        </button>
+
 
       </div>
     </aside>
