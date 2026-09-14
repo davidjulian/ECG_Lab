@@ -74,7 +74,7 @@ const PARAM_SECTIONS = [
   {
     id: 'ans',
     label: 'Autonomic Nervous System',
-    description: 'The autonomic nervous system modulates all the parameters above simultaneously. Rather than changing individual properties, autonomic tone shifts the entire system.',
+    description: 'The autonomic nervous system modulates several of the parameters above at once, rather than one at a time: SA rate, AV conduction velocity, ventricular action potential duration, and (sympathetic tone only) Purkinje/ventricular ectopic focus automaticity.',
     keys: ['sympatheticTone', 'parasympatheticTone'],
   },
   {
@@ -130,22 +130,41 @@ function physiologicalInterpretation(derived) {
       clinicalName: 'Fusion Beats', level: 'warn',
     })
   }
-  if (derived.avRatio === Infinity) {
+  // A Purkinje/junctional escape focus can override the SA node even when
+  // AV conduction is fully intact (ECGEngine's ratio===1 "fastest pacemaker
+  // wins" branch) — checked separately from the block cases below since
+  // this isn't an AV block at all.
+  if (derived.escapeSource === 'purkinje' && derived.avRatio === 1) {
+    return withIonNote({
+      mechanismText: 'The Purkinje/junctional escape focus is now firing faster than the (slowed) SA node. AV conduction is intact, but this faster pacemaker has taken over control of the ventricles.',
+      clinicalName: 'Accelerated Junctional Rhythm', level: 'warn',
+    })
+  }
+  // escapeSource is set whenever ECGEngine routed through
+  // buildEscapeOrStandstill — covers both literal complete block
+  // (avRatio===Infinity) and finite high-grade block (avRatio 4-8, routed
+  // here since Mobitz I/II's wave structure doesn't apply at that severity).
+  // Checked before the avRatio>1 Mobitz case below so high-grade block isn't
+  // mislabeled as Wenckebach/Mobitz II.
+  if (derived.escapeSource !== undefined) {
+    const complete = derived.avRatio === Infinity
+    const degree = complete ? 'Third-Degree' : 'High-Grade'
+    const noImpulseText = complete ? 'No atrial impulse reaches the ventricles' : 'Only rare atrial impulses reach the ventricles'
     if (derived.escapeSource === 'purkinje') {
       return withIonNote({
-        mechanismText: 'Complete AV block. No atrial impulse reaches the ventricles — the Purkinje system is acting as an escape pacemaker.',
-        clinicalName: 'Third-Degree AV Block (Junctional Escape)', level: 'danger',
+        mechanismText: `${complete ? 'Complete' : 'High-grade'} AV block. ${noImpulseText} — the Purkinje system is acting as an escape pacemaker.`,
+        clinicalName: `${degree} AV Block (Junctional Escape)`, level: 'danger',
       })
     }
     if (derived.escapeSource === 'ventricular') {
       return withIonNote({
-        mechanismText: 'Complete AV block. No atrial impulse reaches the ventricles — ventricular muscle itself is now acting as the escape pacemaker.',
-        clinicalName: 'Third-Degree AV Block (Ventricular Escape)', level: 'danger',
+        mechanismText: `${complete ? 'Complete' : 'High-grade'} AV block. ${noImpulseText} — ventricular muscle itself is now acting as the escape pacemaker.`,
+        clinicalName: `${degree} AV Block (Ventricular Escape)`, level: 'danger',
       })
     }
     return withIonNote({
-      mechanismText: 'Complete AV block with no escape pacemaker firing — the ventricles are not contracting at all.',
-      clinicalName: 'Ventricular Standstill', level: 'danger',
+      mechanismText: `${complete ? 'Complete' : 'High-grade'} AV block with no escape pacemaker firing — the ventricles are not contracting at all.`,
+      clinicalName: complete ? 'Ventricular Standstill' : 'High-Grade AV Block (Standstill)', level: 'danger',
     })
   }
   if (derived.avRatio > 1) {
@@ -181,7 +200,7 @@ function physiologicalInterpretation(derived) {
   }
   if (derived.atrialErraticness > 0.3) {
     return withIonNote({
-      mechanismText: 'The atrial refractory period is approaching the re-entry threshold — conduction is becoming erratic, though not yet organized into a circuit.',
+      mechanismText: 'The atrial refractory period is approaching the re-entry threshold — a re-entrant circuit hasn’t formed yet, but the margin is narrowing.',
       clinicalName: null, level: 'info',
     })
   }
@@ -728,13 +747,15 @@ export default function ECGSimulator() {
                     label="Purkinje Ectopic Automaticity (bpm)"
                     value={purkinjeAutomaticity} min={0} max={50} unit=" bpm"
                     onChange={v => set('purkinjeAutomaticity', v)}
-                    hint="Purkinje cells have intrinsic automaticity at 20-40 bpm but are normally suppressed by the faster SA node (overdrive suppression). This slider controls what happens when SA node suppression is removed or AV conduction fails."
+                    hint="Purkinje cells have intrinsic automaticity at 20-40 bpm but are normally suppressed by the faster SA node (overdrive suppression). This slider controls what happens when SA node suppression is removed or AV conduction fails. Modeled here as a narrow-QRS, junctional-level escape — a distal ventricular escape (wide QRS) is the separate Ventricular Ectopic Automaticity slider."
                   />
                   {purkinjeAutomaticity > 0 && (
                     <p className="text-xs mt-1.5 leading-snug" style={{ color: derived.escapeSource === 'purkinje' ? '#f59e0b' : '#6b7280' }}>
-                      {derived.escapeSource === 'purkinje'
+                      {derived.escapeSource === 'purkinje' && derived.avRatio === 1
+                        ? `AV conduction is intact, but this focus (${Math.round(derived.effectivePurkinjeRate)} bpm) is now firing faster than the SA node (${Math.round(derived.effectiveSaRate)} bpm) — it has taken over control before any sinus impulse arrives.`
+                        : derived.escapeSource === 'purkinje'
                         ? "The SA node's impulses are blocked at the AV node. The Purkinje system is now acting as an escape pacemaker — without it, the ventricles would not contract at all."
-                        : `SA rate (${Math.round(derived.effectiveSaRate)} bpm) > Purkinje rate — SA node is suppressing this backup pacemaker through overdrive suppression. Try slowing the SA node below the Purkinje rate to see the escape rhythm emerge.`}
+                        : `SA rate (${Math.round(derived.effectiveSaRate)} bpm) > Purkinje rate (${Math.round(derived.effectivePurkinjeRate)} bpm) — SA node is suppressing this backup pacemaker through overdrive suppression. Try slowing the SA node below the Purkinje rate to see the escape rhythm emerge.`}
                     </p>
                   )}
                 </div>

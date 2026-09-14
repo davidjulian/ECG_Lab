@@ -564,6 +564,19 @@ function ECGStrip({ rhythm }) {
   const lastRef    = useRef(null)
   const rafRef     = useRef(null)
 
+  const [playing, setPlaying] = useState(true)
+  const playingRef = useRef(playing)
+  useEffect(() => { playingRef.current = playing }, [playing])
+
+  // Scrubber plumbing — uncontrolled DOM node + refs (matching
+  // LeadPlacementLab's pattern) so dragging never fights the rAF loop with
+  // React re-renders. The strip repeats every `cycleMs`, so scrubbing within
+  // one cycle covers every distinct frame the trace can show.
+  const scrubbingRef  = useRef(false)
+  const scrubRef       = useRef(null)
+  const scrubLabelRef  = useRef(null)
+  const cycleMs = Math.round(rhythm?.cycleMs || 1000)
+
   useEffect(() => {
     if (!rhythm) return
     const canvas = canvasRef.current
@@ -571,10 +584,17 @@ function ECGStrip({ rhythm }) {
     const ctx = canvas.getContext('2d')
     elapsedRef.current = 0
     lastRef.current = null
+    if (scrubRef.current) scrubRef.current.value = '0'
+    if (scrubLabelRef.current) scrubLabelRef.current.textContent = `0 / ${cycleMs} ms`
 
     function frame(now) {
-      if (lastRef.current !== null) elapsedRef.current += (now - lastRef.current)
+      if (lastRef.current !== null && playingRef.current && !scrubbingRef.current) {
+        elapsedRef.current += (now - lastRef.current)
+      }
       lastRef.current = now
+      const tMs = ((elapsedRef.current % cycleMs) + cycleMs) % cycleMs
+      if (!scrubbingRef.current && scrubRef.current) scrubRef.current.value = String(Math.round(tMs))
+      if (scrubLabelRef.current) scrubLabelRef.current.textContent = `${Math.round(tMs)} / ${cycleMs} ms`
       ctx.fillStyle = '#111827'
       ctx.fillRect(0, 0, SW, SH)
       drawGrid(ctx, SW, SH)
@@ -586,13 +606,42 @@ function ECGStrip({ rhythm }) {
       cancelAnimationFrame(rafRef.current)
       lastRef.current = null
     }
-  }, [rhythm])
+  }, [rhythm, cycleMs])
 
   return (
-    <canvas ref={canvasRef} width={SW} height={SH}
-      className="w-full rounded-lg block"
-      style={{ maxWidth: SW, background: '#111827' }}
-    />
+    <div>
+      <canvas ref={canvasRef} width={SW} height={SH}
+        className="w-full rounded-lg block"
+        style={{ maxWidth: SW, background: '#111827' }}
+      />
+      <div className="flex items-center gap-3 mt-1.5 flex-wrap">
+        <button
+          onClick={() => setPlaying(v => !v)}
+          className={`shrink-0 px-2.5 py-1 rounded-md text-xs font-medium border transition-colors ${
+            playing ? 'bg-gray-800 text-gray-300 border-gray-700' : 'bg-emerald-950/60 text-emerald-300 border-emerald-700/50'
+          }`}
+        >
+          {playing ? 'Pause' : 'Play'}
+        </button>
+        <input
+          ref={scrubRef}
+          type="range"
+          min={0}
+          max={cycleMs}
+          defaultValue={0}
+          step={1}
+          onMouseDown={() => { scrubbingRef.current = true; setPlaying(false) }}
+          onTouchStart={() => { scrubbingRef.current = true; setPlaying(false) }}
+          onMouseUp={() => { scrubbingRef.current = false }}
+          onTouchEnd={() => { scrubbingRef.current = false }}
+          onChange={e => { elapsedRef.current = Number(e.target.value) }}
+          className="flex-1 min-w-[100px] accent-emerald-500"
+        />
+        <span ref={scrubLabelRef} className="text-xs font-mono text-gray-500 tabular-nums w-24 text-right shrink-0">
+          0 / {cycleMs} ms
+        </span>
+      </div>
+    </div>
   )
 }
 

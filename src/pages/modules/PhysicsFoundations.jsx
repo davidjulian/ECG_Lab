@@ -577,6 +577,10 @@ function Sim1B() {
 function PlayIcon()  { return <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg> }
 function PauseIcon() { return <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M7 5h4v14H7zm6 0h4v14h-4z"/></svg> }
 const CELL_SPEEDS = [0.25, 0.5, 1, 1.5, 2]
+// Mirrors the timing constants inside Sim1DCells's p5 sketch (STEP_DELAY=90,
+// TRANS_DUR=60, APD=260, REST_PAUSE=500, N=10) — kept in sync manually since
+// the scrub input's `max` is needed outside the sketch closure.
+const CELLS_TOTAL_CYCLE_MS = 9 * 90 + 2 * 60 + 260 + 500
 
 function Sim1DCells() {
   const containerRef = useRef()
@@ -597,6 +601,14 @@ function Sim1DCells() {
   useEffect(() => { showFieldRef.current = showField }, [showField])
   useEffect(() => { showEqRef.current = showEq }, [showEq])
   useEffect(() => { showCurrentRef.current = showCurrent }, [showCurrent])
+
+  // Scrubber plumbing — uncontrolled DOM node + refs, matching
+  // LeadPlacementLab's pattern, so dragging never triggers a React re-render
+  // during the p5 draw loop.
+  const simTimeRef = useRef(0)
+  const scrubbingRef = useRef(false)
+  const scrubRef = useRef(null)
+  const scrubLabelRef = useRef(null)
 
   useEffect(() => {
     // Scaled ~0.78x from the original 720×480 (same uniform-factor rule as
@@ -622,8 +634,6 @@ function Sim1DCells() {
 
     const sketch = (p) => {
       const xs = Array.from({ length: N }, (_, i) => MARGIN_X + CELL_W / 2 + i * (CELL_W + GAP))
-      const simTimeRef = { current: 0 }
-      let lastMaxP = 1
 
       // Two draggable probes — the actual "electrodes" reading the voltage
       // this changing charge distribution produces, so ΔV isn't an
@@ -657,20 +667,6 @@ function Sim1DCells() {
 
       function chargesAt(t) {
         return xs.map((x, i) => ({ x, y: ROW_Y, q: sAt(i, t) * QMAX }))
-      }
-
-      function netDipole(t) {
-        const cs = chargesAt(t)
-        let p2 = 0
-        for (const c of cs) p2 += c.q * (c.x - CX)
-        return p2
-      }
-
-      // Sample the whole cycle once to normalize the arrow/strip-chart scale.
-      function computeMaxP() {
-        let m = 1e-6
-        for (let t = 0; t < TOTAL_CYCLE; t += 10) m = Math.max(m, Math.abs(netDipole(t)))
-        return m
       }
 
       function volt(x, y, cs) {
@@ -894,13 +890,15 @@ function Sim1DCells() {
         cnv.elt.style.height = 'auto'
         cnv.elt.style.display = 'block'
         p.textFont('monospace')
-        lastMaxP = computeMaxP()
         if (cancelled) p.remove()
       }
 
       p.draw = () => {
-        if (playingRef.current) simTimeRef.current += p.deltaTime * speedRef.current
-        const t = simTimeRef.current % TOTAL_CYCLE
+        if (playingRef.current && !scrubbingRef.current) simTimeRef.current += p.deltaTime * speedRef.current
+        const t = ((simTimeRef.current % TOTAL_CYCLE) + TOTAL_CYCLE) % TOTAL_CYCLE
+
+        if (!scrubbingRef.current && scrubRef.current) scrubRef.current.value = String(Math.round(t))
+        if (scrubLabelRef.current) scrubLabelRef.current.textContent = `${Math.round(t)} / ${TOTAL_CYCLE} ms`
 
         p.background(15, 20, 30)
 
@@ -942,27 +940,43 @@ function Sim1DCells() {
         p.fill(168, 85, 247, 220)
         p.text(`B  ${vB.toFixed(0)}`, probeB.x, probeB.y - PR - 3)
 
-        // Net dipole vector, drawn above the row
-        const pNow = netDipole(t)
-        const norm = Math.max(-1, Math.min(1, pNow / lastMaxP))
+        // Sample ΔV(t) as currently measured by the dragged probes, over one
+        // full cycle — this is what actually depends on electrode placement
+        // (unlike p(t), which is an intrinsic property of the charge
+        // distribution and never changes). Reused below for both the
+        // electrode-reading arrow and the "ECG output" strip chart.
+        const steps = 60
+        const dvSamples = new Array(steps + 1)
+        let maxDV = 1e-6
+        for (let k = 0; k <= steps; k++) {
+          const ts = (k / steps) * TOTAL_CYCLE
+          const csk = chargesAt(ts)
+          const dvk = volt(probeA.x, probeA.y, csk) - volt(probeB.x, probeB.y, csk)
+          dvSamples[k] = dvk
+          maxDV = Math.max(maxDV, Math.abs(dvk))
+        }
+
+        // Electrode reading vector, drawn above the row — how much of the
+        // field the current probe pair actually picks up, so dragging A/B
+        // visibly changes the arrow.
+        const normDV = Math.max(-1, Math.min(1, dv / maxDV))
         const arrowY = ROW_Y - CELL_H / 2 - 55
         const maxLen = 130
         p.stroke(255, 255, 255, 40); p.strokeWeight(1)
         p.line(CX - maxLen, arrowY, CX + maxLen, arrowY)
-        if (Math.abs(norm) > 0.02) {
-          arrow(CX, arrowY, CX + norm * maxLen, arrowY, 52, 211, 153, 230, 3)
+        if (Math.abs(normDV) > 0.02) {
+          arrow(CX, arrowY, CX + normDV * maxLen, arrowY, 245, 158, 11, 230, 3)
         }
-        p.fill(52, 211, 153, 180); p.noStroke()
+        p.fill(245, 158, 11, 180); p.noStroke()
         p.textAlign(p.CENTER, p.BOTTOM); p.textSize(11)
-        p.text('net dipole p(t)', CX, arrowY - 10)
+        p.text('electrode reading ΔV(t)', CX, arrowY - 10)
 
         // Info panel
         p.fill(15, 20, 30, 210); p.noStroke()
-        p.rect(9, 9, 190, 58, 7)
+        p.rect(9, 9, 190, 42, 7)
         p.textAlign(p.LEFT, p.TOP); p.textSize(11)
         p.fill(255, 255, 255, 210); p.text(`t = ${Math.round(t)} ms`, 18, 18)
-        p.fill(52, 211, 153, 200); p.text(`p(t) = ${pNow.toFixed(0)}`, 18, 34)
-        p.fill(150, 150, 150, 150); p.text(phaseName(t), 18, 50)
+        p.fill(150, 150, 150, 150); p.text(phaseName(t), 18, 34)
 
         // Probe readout panel — V(A), V(B) and their difference
         p.fill(15, 20, 30, 210); p.noStroke()
@@ -974,24 +988,27 @@ function Sim1DCells() {
         p.fill(255, 255, 255, 60); p.textSize(9)
         p.text('drag A/B to probe the field', 18, H - 14)
 
-        // Mini strip chart of p(t) over one full cycle
+        // "ECG output" strip chart — the ΔV(t) actually seen by the current
+        // electrode pair, so it visibly changes shape as A/B are dragged
+        // (unlike the underlying dipole, which is fixed).
         const chW = 190, chH = 60, chX = W - chW - 9, chY = 9
         p.fill(15, 20, 30, 210); p.noStroke()
         p.rect(chX, chY, chW, chH, 7)
         p.stroke(255, 255, 255, 30); p.strokeWeight(1)
         p.line(chX, chY + chH / 2, chX + chW, chY + chH / 2)
-        p.noFill(); p.stroke(52, 211, 153, 200); p.strokeWeight(1.5)
+        p.noFill(); p.stroke(245, 158, 11, 200); p.strokeWeight(1.5)
         p.beginShape()
-        const steps = 60
         for (let k = 0; k <= steps; k++) {
-          const ts = (k / steps) * TOTAL_CYCLE
-          const py = chY + chH / 2 - (netDipole(ts) / lastMaxP) * (chH / 2 - 4)
+          const py = chY + chH / 2 - (dvSamples[k] / maxDV) * (chH / 2 - 4)
           p.vertex(chX + (k / steps) * chW, py)
         }
         p.endShape()
         const cursorX = chX + (t / TOTAL_CYCLE) * chW
         p.stroke(255, 255, 255, 120); p.strokeWeight(1)
         p.line(cursorX, chY, cursorX, chY + chH)
+        p.fill(245, 158, 11, 200); p.noStroke()
+        p.textAlign(p.LEFT, p.BOTTOM); p.textSize(9)
+        p.text('ECG output (ΔV)', chX + 5, chY + chH - 4)
       }
 
       p.mousePressed = () => {
@@ -1055,6 +1072,26 @@ function Sim1DCells() {
         >
           Current lines {showCurrent ? 'ON' : 'OFF'}
         </button>
+      </SimBar>
+      <SimBar>
+        <span className="text-xs uppercase tracking-widest text-gray-600 shrink-0">Scrub</span>
+        <input
+          ref={scrubRef}
+          type="range"
+          min={0}
+          max={CELLS_TOTAL_CYCLE_MS}
+          defaultValue={0}
+          step={1}
+          onMouseDown={() => { scrubbingRef.current = true; setPlaying(false) }}
+          onTouchStart={() => { scrubbingRef.current = true; setPlaying(false) }}
+          onMouseUp={() => { scrubbingRef.current = false }}
+          onTouchEnd={() => { scrubbingRef.current = false }}
+          onChange={e => { simTimeRef.current = Number(e.target.value) }}
+          className="flex-1 min-w-[120px] accent-emerald-500"
+        />
+        <span ref={scrubLabelRef} className="text-xs font-mono text-gray-500 tabular-nums w-28 text-right">
+          0 / {CELLS_TOTAL_CYCLE_MS} ms
+        </span>
       </SimBar>
     </CanvasWrap>
   )

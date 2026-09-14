@@ -1058,15 +1058,39 @@ export const PHYSIOLOGY_DEFAULTS = {
 
 function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)) }
 
-// ── Layer 1: autonomic tone pre-modifies the raw section 1/3/5 sliders ──────
+// ── Layer 1: autonomic tone + severe ion derangement pre-modify the raw ────
+// section 1/3/4/5 sliders. Ion effects here are deliberately modest (a
+// teaching-tool-scale nudge, not a full ionic model) and mirror the same
+// thresholds/shape applyIonEffects already uses for its own wave-morphology
+// changes, so the rate/conduction shift and the visual explanation stay
+// consistent with each other.
 function applyAutonomicTone(phys) {
-  const { saAutomaticity, avConductionVelocityPct, ventricularApdMs, sympatheticTone, parasympatheticTone } = phys
+  const {
+    saAutomaticity, avConductionVelocityPct, ventricularApdMs,
+    purkinjeAutomaticity, ventricularEctopicRate,
+    sympatheticTone, parasympatheticTone, potassiumMEqL,
+  } = phys
   const symp = sympatheticTone / 100
   const para = parasympatheticTone / 100
+
+  // Severe hyperkalemia suppresses SA automaticity and AV conduction
+  // broadly, not just QRS/T-wave morphology (which applyIonEffects handles
+  // separately, later, purely as wave shape).
+  const hyperkalemiaSuppression = potassiumMEqL > 7.5 ? smoothstep((potassiumMEqL - 7.5) / 1.0) : 0
+  // Hypokalemia raises ectopic-focus excitability.
+  const hypokalemiaExcitability = potassiumMEqL < 3.5 ? smoothstep((3.5 - potassiumMEqL) / 1.5) : 0
+
   return {
-    effectiveSaRate:        clamp(saAutomaticity * (1 + 0.8 * symp - 0.6 * para), 15, 260),
-    effectiveAvVelocityPct: clamp(avConductionVelocityPct * (1 + 0.35 * symp - 0.45 * para), 0, 100),
+    effectiveSaRate:        clamp(saAutomaticity * (1 + 0.8 * symp - 0.6 * para) * (1 - 0.5 * hyperkalemiaSuppression), 15, 260),
+    effectiveAvVelocityPct: clamp(avConductionVelocityPct * (1 + 0.35 * symp - 0.45 * para) * (1 - 0.6 * hyperkalemiaSuppression), 0, 100),
     effectiveApdMs:         clamp(ventricularApdMs * (1 - 0.25 * symp + 0.08 * para), 150, 600),
+    // Catecholamine excess raises latent-pacemaker/ectopic-focus
+    // automaticity (the arrhythmogenic mechanism the app's own ectopic-rate
+    // slider hint already describes) — vagal tone doesn't suppress
+    // ventricular-level automaticity, so only sympathetic tone scales these.
+    // Hypokalemia additionally raises ectopic excitability specifically.
+    effectivePurkinjeRate: purkinjeAutomaticity > 0 ? clamp(purkinjeAutomaticity * (1 + 0.4 * symp), 0, 260) : 0,
+    effectiveEctopicRate:  ventricularEctopicRate > 0 ? clamp(ventricularEctopicRate * (1 + 0.4 * symp) * (1 + 0.3 * hypokalemiaExcitability), 0, 260) : 0,
   }
 }
 
@@ -1074,9 +1098,15 @@ function applyAutonomicTone(phys) {
 const FLUTTER_THRESHOLD_MS = 200
 const FIB_THRESHOLD_MS     = 180
 
-function atrialRegimeFrom(atrialRefractoryMs) {
-  if (atrialRefractoryMs >= FLUTTER_THRESHOLD_MS) return 'organized'
-  if (atrialRefractoryMs >= FIB_THRESHOLD_MS)      return 'flutter'
+function atrialRegimeFrom(atrialRefractoryMs, atrialConductionVelocityPct = 100) {
+  // Re-entry risk is wavelength = conduction velocity × refractory period,
+  // not refractory period alone. Slower conduction shortens the effective
+  // wavelength for a given refractory period, so scale the refractory value
+  // compared against the thresholds by velocity — at the reference 100%
+  // velocity this is a no-op, preserving existing default-velocity behavior.
+  const effectiveRefractoryMs = atrialRefractoryMs * clamp(atrialConductionVelocityPct, 20, 100) / 100
+  if (effectiveRefractoryMs >= FLUTTER_THRESHOLD_MS) return 'organized'
+  if (effectiveRefractoryMs >= FIB_THRESHOLD_MS)      return 'flutter'
   return 'fibrillation'
 }
 
@@ -1277,14 +1307,16 @@ export function buildRhythmFromPhysiology(phys0) {
     firingRegularity,
     atrialConductionVelocityPct, atrialRefractoryMs,
     avConductionVelocityPct, avRecoveryBehavior, avRefractoryMs,
-    purkinjeAutomaticity,
-    repolHeterogeneity, ventricularEctopicRate,
+    repolHeterogeneity,
     potassiumMEqL, calciumMgDl,
   } = phys
 
-  const { effectiveSaRate, effectiveAvVelocityPct, effectiveApdMs } = applyAutonomicTone(phys)
+  const {
+    effectiveSaRate, effectiveAvVelocityPct, effectiveApdMs,
+    effectivePurkinjeRate, effectiveEctopicRate,
+  } = applyAutonomicTone(phys)
 
-  const derived = { avRecoveryBehavior, effectiveSaRate, effectiveAvVelocityPct }
+  const derived = { avRecoveryBehavior, effectiveSaRate, effectiveAvVelocityPct, effectivePurkinjeRate, effectiveEctopicRate }
 
   // ── Bundle-branch derived QRS morphology (shared by every branch below) ──
   const leftImp    = bundleImpairment(phys.leftBundleVelocityPct)
@@ -1319,7 +1351,7 @@ export function buildRhythmFromPhysiology(phys0) {
   derived.heterogeneity  = repolHeterogeneity
 
   // ── Atrial regime ─────────────────────────────────────────────────────
-  const atrialRegime = atrialRegimeFrom(atrialRefractoryMs)
+  const atrialRegime = atrialRegimeFrom(atrialRefractoryMs, atrialConductionVelocityPct)
   derived.atrialRegime = atrialRegime
 
   const pDuration  = clamp(80 + (100 - atrialConductionVelocityPct) * 1.8, 80, 240)
@@ -1338,7 +1370,7 @@ export function buildRhythmFromPhysiology(phys0) {
       : clamp(Math.round(90000 / Math.max(50, effectiveAvRefractoryMs)), 40, 180)
     derived.meanVentricularRateBpm = meanVentricularRate
     if (meanVentricularRate === 0) {
-      result = buildEscapeOrStandstill({ purkinjeAutomaticity, ventricularEctopicRate, baseQRS, derived })
+      result = buildEscapeOrStandstill({ purkinjeAutomaticity: effectivePurkinjeRate, ventricularEctopicRate: effectiveEctopicRate, baseQRS, derived })
     } else {
       const { waves, cycleMs, heartRateBpm } = buildAFibWaves({ meanVentricularRate, fibrillatoryAmplitude: 0.07, ...baseQRS })
       result = { waves, cycleMs, nativeCycleMs: cycleMs, measurable: false, heartRateBpm }
@@ -1351,7 +1383,7 @@ export function buildRhythmFromPhysiology(phys0) {
     derived.atrialIntervalMs = atrialIntervalMs
     derived.effectiveAvRefractoryMs = avConductionVelocityPct === 0 ? null : effectiveAvRefractoryMs
     if (avConductionVelocityPct === 0 || !Number.isFinite(ratio) || ratio >= 8) {
-      result = buildEscapeOrStandstill({ purkinjeAutomaticity, ventricularEctopicRate, baseQRS, derived })
+      result = buildEscapeOrStandstill({ purkinjeAutomaticity: effectivePurkinjeRate, ventricularEctopicRate: effectiveEctopicRate, baseQRS, derived })
     } else {
       const ventricularRate = 300 / ratio
       const { waves, cycleMs, heartRateBpm } = buildAtrialFlutterWaves({
@@ -1366,16 +1398,26 @@ export function buildRhythmFromPhysiology(phys0) {
     const atrialIntervalMs = 60000 / effectiveSaRate
     derived.atrialIntervalMs = atrialIntervalMs
 
-    if (avConductionVelocityPct === 0) {
+    // Bilateral complete bundle-branch block (both bundles maximally
+    // impaired) is anatomically infra-Hisian complete heart block — no path
+    // left for a supraventricular impulse to reach the ventricles — so it
+    // gets the same escape/standstill treatment as avConductionVelocityPct
+    // === 0, instead of silently conducting 1:1 at an ever-widening QRS.
+    const bilateralCompleteBundleBlock = Math.min(leftImp, rightImp) >= 0.95
+    if (avConductionVelocityPct === 0 || bilateralCompleteBundleBlock) {
       derived.avRatio = Infinity
-      result = buildEscapeOrStandstill({ purkinjeAutomaticity, ventricularEctopicRate, baseQRS, derived, atrialIntervalMs, pAmplitude, pDuration })
+      result = buildEscapeOrStandstill({ purkinjeAutomaticity: effectivePurkinjeRate, ventricularEctopicRate: effectiveEctopicRate, baseQRS, derived, atrialIntervalMs, pAmplitude, pDuration })
     } else {
       const effectiveAvRefractoryMs = avRefractoryMs * velocityPenalty(effectiveAvVelocityPct)
       const ratio = computeAvRatio(effectiveAvRefractoryMs, atrialIntervalMs)
       derived.avRatio = ratio
       derived.effectiveAvRefractoryMs = effectiveAvRefractoryMs
       const prMs = prIntervalFromVelocity(atrialConductionVelocityPct, effectiveAvVelocityPct)
-      derived.prIntervalMs = prMs
+      // Only assigned to derived.prIntervalMs in the branches below where a
+      // single real conducted PR value applies (plain 1:1 sinus conduction,
+      // Mobitz I/II) — left unset for escape/dissociated/ectopic-override
+      // rhythms, where "PR interval" isn't a meaningful measurement (the UI
+      // renders it as "—" when unset).
 
       // Unlike flutter's fixed-ratio builder, Mobitz I/II both produce a
       // "mostly conducting, one drop per group" pattern (conductionRatio
@@ -1384,50 +1426,82 @@ export function buildRhythmFromPhysiology(phys0) {
       // escape-dependent instead. Route ratio>=4 to the escape/standstill
       // path rather than stretching the Mobitz builders past what they mean.
       if (ratio >= 4) {
-        result = buildEscapeOrStandstill({ purkinjeAutomaticity, ventricularEctopicRate, baseQRS, derived, atrialIntervalMs, pAmplitude, pDuration })
+        result = buildEscapeOrStandstill({ purkinjeAutomaticity: effectivePurkinjeRate, ventricularEctopicRate: effectiveEctopicRate, baseQRS, derived, atrialIntervalMs, pAmplitude, pDuration })
       } else if (ratio === 1) {
-        const capture = ventricularEctopicRate > 0 ? classifyCapture(ventricularEctopicRate, effectiveSaRate) : 'inactive'
-        derived.ectopicCapture = capture
+        // "Fastest pacemaker wins": a Purkinje/junctional escape focus that
+        // now outpaces the (possibly suppressed) SA node should take over
+        // even though AV conduction itself is intact — this is the same
+        // overdrive-suppression comparison buildEscapeOrStandstill already
+        // makes between purkinje/ventricular foci, just also checked against
+        // effectiveSaRate here since AV conduction hasn't failed. Checked
+        // before the ventricular-ectopic capture logic below (left
+        // untouched) so its existing 'vtach'/'fusion'/'pvcs' routing doesn't
+        // regress when the ventricular focus is the faster/only one.
+        const purkinjeCapture = effectivePurkinjeRate > 0 ? classifyCapture(effectivePurkinjeRate, effectiveSaRate) : 'inactive'
 
-        if (capture === 'captured') {
-          const rate = ventricularEctopicRate
-          const waves = complexWaves({
-            hasPWave: false, qrsLeadIn: 15, ...baseQRS,
-            qrsAxis: AXIS_TARGETS.extreme, rAmplitude: 1.1, sAmplitude: -0.5,
-            qrsDuration: Math.max(qrsDuration, 150),
-          })
-          result = { waves, cycleMs: 60000 / rate, nativeCycleMs: null, measurable: false, heartRateBpm: Math.round(rate) }
-        } else if (capture === 'fusion') {
-          result = buildFusionCycle({ saRate: effectiveSaRate, pAmplitude, pDuration, prMs, baseQRS })
-        } else if (capture === 'suppressed' || (repolHeterogeneity === 'high' && ventricularEctopicRate === 0)) {
-          // A suppressed ectopic focus (rate below SA) still occasionally
-          // fires early when the SA impulse arrives during its vulnerable
-          // period — a premature wide beat — rather than producing no
-          // visible effect at all. High repolarization heterogeneity seeds
-          // the same kind of re-entrant beat via a different mechanism; the
-          // two triggers share this path but never double-stack (guarded
-          // above by `ventricularEctopicRate === 0`). Recorded as
-          // 'suppressed' either way so physiologyToRhythmId routes both
-          // triggers to the same (correct, multi-beat) HeartAnimation case.
-          derived.ectopicCapture = 'suppressed'
-          const built = buildPVCsWaves({
-            sinusRate: effectiveSaRate, multifocal: false,
-            pAmplitude, pDuration, pAxis: 60, prInterval: prMs, ...baseQRS,
-            pvcRAmplitude: 1.3, pvcSAmplitude: -0.5, pvcQrsDuration: 150,
-            pvcQrsAxis: -100, pvcTAmplitude: -0.4, pvcTAxis: 90,
-            pvcQtInterval: 380, pvcCoupling: 0.7,
-          })
-          result = { ...built, nativeCycleMs: built.cycleMs, measurable: false }
+        if (purkinjeCapture === 'captured' && effectivePurkinjeRate >= effectiveEctopicRate) {
+          result = buildEscapeOrStandstill({ purkinjeAutomaticity: effectivePurkinjeRate, ventricularEctopicRate: effectiveEctopicRate, baseQRS, derived, atrialIntervalMs, pAmplitude, pDuration })
         } else {
-          const waves = complexWaves({ hasPWave: true, pAmplitude, pDuration, pAxis: 60, prInterval: prMs, ...baseQRS })
-          result = { waves, cycleMs: atrialIntervalMs, nativeCycleMs: null, measurable: true, heartRateBpm: Math.round(effectiveSaRate) }
+          const capture = effectiveEctopicRate > 0 ? classifyCapture(effectiveEctopicRate, effectiveSaRate) : 'inactive'
+          derived.ectopicCapture = capture
+
+          if (capture === 'captured') {
+            const rate = effectiveEctopicRate
+            const waves = complexWaves({
+              hasPWave: false, qrsLeadIn: 15, ...baseQRS,
+              qrsAxis: AXIS_TARGETS.extreme, rAmplitude: 1.1, sAmplitude: -0.5,
+              qrsDuration: Math.max(qrsDuration, 150),
+            })
+            result = { waves, cycleMs: 60000 / rate, nativeCycleMs: null, measurable: false, heartRateBpm: Math.round(rate) }
+          } else if (capture === 'fusion') {
+            result = buildFusionCycle({ saRate: effectiveSaRate, pAmplitude, pDuration, prMs, baseQRS })
+          } else if (capture === 'suppressed' || (repolHeterogeneity === 'high' && effectiveEctopicRate === 0)) {
+            // A suppressed ectopic focus (rate below SA) still occasionally
+            // fires early when the SA impulse arrives during its vulnerable
+            // period — a premature wide beat — rather than producing no
+            // visible effect at all. High repolarization heterogeneity seeds
+            // the same kind of re-entrant beat via a different mechanism; the
+            // two triggers share this path but never double-stack (guarded
+            // above by `effectiveEctopicRate === 0`). Recorded as
+            // 'suppressed' either way so physiologyToRhythmId routes both
+            // triggers to the same (correct, multi-beat) HeartAnimation case.
+            derived.ectopicCapture = 'suppressed'
+            const built = buildPVCsWaves({
+              sinusRate: effectiveSaRate, multifocal: false,
+              pAmplitude, pDuration, pAxis: 60, prInterval: prMs, ...baseQRS,
+              pvcRAmplitude: 1.3, pvcSAmplitude: -0.5, pvcQrsDuration: 150,
+              pvcQrsAxis: -100, pvcTAmplitude: -0.4, pvcTAxis: 90,
+              pvcQtInterval: 380, pvcCoupling: 0.7,
+            })
+            result = { ...built, nativeCycleMs: built.cycleMs, measurable: false }
+          } else {
+            const waves = complexWaves({ hasPWave: true, pAmplitude, pDuration, pAxis: 60, prInterval: prMs, ...baseQRS })
+            result = { waves, cycleMs: atrialIntervalMs, nativeCycleMs: null, measurable: true, heartRateBpm: Math.round(effectiveSaRate) }
+            derived.prIntervalMs = prMs
+          }
         }
       } else {
         const qCt = ratio - 1
+        derived.prIntervalMs = prMs
         if (avRecoveryBehavior === 'fatigue') {
+          // Classic Wenckebach: PR lengthens each beat, but by a SMALLER
+          // amount each time (largest jump right after the pause,
+          // progressively smaller increments as the node approaches its
+          // refractory limit) — geometric decay, not a constant step, so RR
+          // also shortens each beat before the drop. Total prolongation by
+          // the last conducted beat matches what the old constant-step
+          // formula produced; only how it's distributed across beats changes.
+          const totalStep = (effectiveAvRefractoryMs - prMs) / ratio * qCt
+          const decay = 0.55
+          const decaySum = qCt === 1 ? 1 : (1 - Math.pow(decay, qCt)) / (1 - decay)
+          const firstIncrement = totalStep / decaySum
           const prIntervals = []
-          const step = (effectiveAvRefractoryMs - prMs) / ratio
-          for (let i = 0; i < qCt; i++) prIntervals.push(Math.round(prMs + step * (i + 1)))
+          let pr = prMs, increment = firstIncrement
+          for (let i = 0; i < qCt; i++) {
+            pr += increment
+            prIntervals.push(Math.round(pr))
+            increment *= decay
+          }
           const { waves, cycleMs, heartRateBpm } = buildMobitzIWaves({
             atrialRate: effectiveSaRate, prIntervals, pAmplitude, pDuration, pAxis: 60, ...baseQRS,
           })
