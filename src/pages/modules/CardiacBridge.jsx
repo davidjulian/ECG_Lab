@@ -2546,10 +2546,10 @@ export default function CardiacBridge() {
 
   const [selected2A, setSelected2A] = useState(null)
 
-  const { active, visited, setActive } = useTabState('cardiac', MODULE2_TABS.map(t => t.id))
+  const { active, setActive } = useTabState(MODULE2_TABS.map(t => t.id))
   // Tabs now render as a sub-menu in the sidebar (see Sidebar.jsx) instead
   // of an in-page pill bar — this just publishes the same state there.
-  usePublishTabs('cardiac', MODULE2_TABS, { active, visited, setActive })
+  usePublishTabs('cardiac', MODULE2_TABS, { active, setActive })
 
   return (
     <ModulePage

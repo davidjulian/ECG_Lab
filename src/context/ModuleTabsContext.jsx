@@ -1,7 +1,7 @@
 import { createContext, useContext, useState } from 'react'
 
 // Lets a tabbed module page (PhysicsFoundations, CardiacBridge) publish its
-// tab list + active/visited state so Sidebar can render it as a nested
+// tab list + active state so Sidebar can render it as a nested
 // sub-menu under that module's row, instead of (or in addition to) the
 // in-page pill bar. Sidebar and the module page are siblings under
 // LabLayout/FreePlayLayout — this context is what lets them share state
@@ -9,7 +9,7 @@ import { createContext, useContext, useState } from 'react'
 const ModuleTabsContext = createContext(null)
 
 export function ModuleTabsProvider({ children }) {
-  // { moduleId, tabs: [{id,label}], active, visited: Set, setActive } | null
+  // { moduleId, tabs: [{id,label}], active, setActive } | null
   const [tabInfo, setTabInfo] = useState(null)
   return (
     <ModuleTabsContext.Provider value={{ tabInfo, setTabInfo }}>

@@ -8,7 +8,7 @@ An ECG teaching app for PCB3713C at the University of Florida, adapted by David 
 2. ECG simulator and rhythms (original module 3)
 3. Patient scenarios (original module 4)
 
-The app opens directly in free play with all three modules accessible. There is no mode selection screen. Older lab module links redirect to their free play equivalents. Progress, tab selections, and scenario scores are saved in this browser when local storage is available. No account or backend setup is required. Stored data does not sync between browsers or devices.
+The app opens directly in free play with all three modules accessible. There is no mode selection screen. Older lab module links redirect to their free play equivalents. No accounts, usernames, saved scores, completion tracking, or browser storage are used. Quiz feedback is shown only for the currently open case and resets when the case is left.
 
 ## Development
 

@@ -1,38 +1,7 @@
-﻿import { useNavigate } from 'react-router-dom'
-import { useMode, MODULE_ORDER, MODE_ACCENT } from '../context/ModeContext'
+import { ACCENT } from '../lib/modules'
 
-/**
- * ModulePage — the visual shell every module page renders inside.
- *
- * Props:
- *   moduleId    — 'physics' | 'cardiac' | 'ECG' | 'scenarios'
- *   number      — 1-4
- *   title       — display title
- *   objective   — optional single "aha moment" statement, shown as a
- *                 compact inline box under the header. Omit to skip it.
- *   description — optional short paragraph under the header. Omit to skip.
- *   wide        — when true, use a considerably wider container and
- *                 tighter outer padding, for modules that need real
- *                 horizontal room for a multi-column dashboard layout
- *   children    — the interactive content (p5.js canvas, ECG strip, etc.)
- *                 When null, shows a "coming soon" placeholder
- */
-export default function ModulePage({ moduleId, number, title, objective, description, wide = false, children }) {
-  const { mode, progress, markComplete } = useMode()
-  const navigate = useNavigate()
-
-  const isLabMode  = mode === 'lab'
-  const isComplete = progress.has(moduleId)
-  const accent     = MODE_ACCENT[isLabMode ? 'lab' : 'free']
-
-  const nextId   = MODULE_ORDER[MODULE_ORDER.indexOf(moduleId) + 1]
-  const nextPath = nextId ? `/${isLabMode ? 'lab' : 'play'}/${nextId}` : null
-
-  const handleMarkComplete = async () => {
-    await markComplete(moduleId)
-    if (isLabMode && nextPath) navigate(nextPath)
-  }
-
+export default function ModulePage({ number, title, objective, description, wide = false, children }) {
+  const accent = ACCENT
   return (
     <div className={`min-h-screen mx-auto ${wide ? 'p-4 max-w-[1500px]' : 'p-5 max-w-4xl'}`}>
 
@@ -50,12 +19,6 @@ export default function ModulePage({ moduleId, number, title, objective, descrip
           >
             Module {number}
           </span>
-
-          {isComplete && (
-            <span className="text-xs text-emerald-400 bg-emerald-950/60 border border-emerald-800 px-2.5 py-0.5 rounded-full">
-              ✓ Completed
-            </span>
-          )}
 
           <h1 className="text-lg font-bold text-white">{title}</h1>
         </div>
@@ -103,47 +66,6 @@ export default function ModulePage({ moduleId, number, title, objective, descrip
         )}
       </div>
 
-      {/* ── Lab Mode: mark complete / advance ── */}
-      {isLabMode && (
-        <div className="border-t border-gray-800 pt-3 flex items-center justify-between">
-          <p className="text-xs text-gray-600">
-            {isComplete
-              ? 'This module is complete.'
-              : 'Work through the material above, then mark this module complete to unlock the next one.'}
-          </p>
-
-          {!isComplete ? (
-            <button
-              onClick={handleMarkComplete}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all hover:opacity-90"
-              style={{
-                backgroundColor: accent + '20',
-                color:           accent,
-                border:          `1px solid ${accent}40`,
-              }}
-            >
-              Mark complete
-              {nextPath && (
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7"/>
-                </svg>
-              )}
-            </button>
-          ) : nextPath ? (
-            <button
-              onClick={() => navigate(nextPath)}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-gray-300 bg-gray-800 hover:bg-gray-700 transition-colors"
-            >
-              Continue to next module
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7"/>
-              </svg>
-            </button>
-          ) : (
-            <span className="text-sm text-emerald-400">All modules complete!</span>
-          )}
-        </div>
-      )}
     </div>
   )
 }

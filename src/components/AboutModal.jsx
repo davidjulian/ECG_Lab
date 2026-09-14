@@ -17,14 +17,8 @@ export default function AboutModal() {
             className="px-3 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-sm">Close</button>
         </div>
         <div className="space-y-4 text-sm leading-relaxed">
-          <p><strong className="text-white">Original creator: Jacob Walker.</strong> ECG Lab is adapted from Jacob’s cardiac electrophysiology learning app.</p>
-          <p>This edition brings together his original modules 1, 3, and 4: physics foundations, ECG simulation and rhythms, and patient scenarios.</p>
-          <p>Adapted by David Julian for PCB3713C at the University of Florida. Development assistance from <strong className="text-white">Claude Code</strong> and <strong className="text-white">OpenAI Codex</strong> is gratefully acknowledged.</p>
-          <p>Progress and scenario scores are stored in this browser when storage is available. They do not sync between devices.</p>
-          <div className="flex flex-wrap gap-4 text-teal-300 underline underline-offset-4">
-            <a href="https://github.com/jwalker2124/pcb3713C-ECG-Lab" target="_blank" rel="noreferrer">Jacob’s original app</a>
-            <a href="https://github.com/davidjulian/ECG_lab" target="_blank" rel="noreferrer">ECG Lab on GitHub</a>
-          </div>
+          <p><strong className="text-white">Original creator: Jacob Walker, UF BME class of 2027</strong></p>
+          <p>Development assistance from <strong className="text-white">Claude Code</strong> and <strong className="text-white">OpenAI Codex</strong></p>
         </div>
       </dialog>
     </>

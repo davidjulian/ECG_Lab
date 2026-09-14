@@ -6,7 +6,7 @@ export function FreePlayLayout() {
   return (
     <ModuleTabsProvider>
       <div className="flex min-h-screen" style={{ backgroundColor: '#0a0e1a' }}>
-        <Sidebar isLabMode={false} />
+        <Sidebar />
         <main className="flex-1 overflow-y-auto">
           <Outlet />
         </main>

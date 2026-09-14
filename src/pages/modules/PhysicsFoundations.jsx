@@ -1299,10 +1299,10 @@ function Sim1D() {
 
 // ── Page ─────────────────────────────────────────────────────────────────────
 export default function PhysicsFoundations() {
-  const { active, visited, setActive } = useTabState('physics', TABS.map(t => t.id))
+  const { active, setActive } = useTabState(TABS.map(t => t.id))
   // Tabs now render as a sub-menu in the sidebar (see Sidebar.jsx) instead
   // of an in-page pill bar — this just publishes the same state there.
-  usePublishTabs('physics', TABS, { active, visited, setActive })
+  usePublishTabs('physics', TABS, { active, setActive })
 
   return (
     <ModulePage

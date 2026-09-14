@@ -1,5 +1,4 @@
-﻿import { useEffect, useRef, useState, useCallback, useMemo } from 'react'
-import { readProgress, writeProgress } from '../../lib/localProgress'
+﻿import { useEffect, useRef, useState, useMemo } from 'react'
 import ModulePage from '../../components/ModulePage'
 import {
   RHYTHMS, RHYTHM_PRESETS, complexWaves,
@@ -793,7 +792,7 @@ function ScenarioResult({ caseData, score }) {
 }
 
 // ── ScenarioCard ──────────────────────────────────────────────────────────────
-function ScenarioCard({ caseData, onSubmit }) {
+function ScenarioCard({ caseData }) {
   const rhythm = useMemo(
     () => caseData.rhythmId ? RHYTHMS[caseData.rhythmId] : caseData.rhythmBuilder?.(),
     [caseData]
@@ -811,7 +810,6 @@ function ScenarioCard({ caseData, onSubmit }) {
     const s = caseData.questions.reduce((sum, q) => sum + (checkAnswer(q, answers[q.id]) ? 1 : 0), 0)
     setScore(s)
     setSubmitted(true)
-    onSubmit(answers, s)
   }
 
   return (
@@ -863,88 +861,24 @@ function ScenarioCard({ caseData, onSubmit }) {
   )
 }
 
-// ── ProgressDashboard ─────────────────────────────────────────────────────────
-function ProgressDashboard({ scores, onSelectCase, activeId }) {
-  const completedCount = CASES.filter(c => scores[c.id] !== undefined).length
-  const reviewNeeded = CASES.filter(c => {
-    const s = scores[c.id]
-    return s !== undefined && s.score < s.max
-  }).map(c => c.category)
-
+function CaseSelector({ onSelectCase, activeId }) {
   return (
-    <div className="mb-3 p-3 rounded-xl border border-gray-800 bg-gray-900/40">
-      <div className="flex items-start gap-8 mb-2.5">
-        <div>
-          <p className="text-2xl font-bold text-white">{completedCount}/{CASES.length}</p>
-          <p className="text-xs text-gray-500 mt-0.5">Cases completed</p>
-        </div>
-        {reviewNeeded.length > 0 && (
-          <div>
-            <p className="text-xs text-gray-500 mb-2">Review needed</p>
-            <div className="flex flex-wrap gap-1.5">
-              {reviewNeeded.map(cat => (
-                <span key={cat}
-                  className="text-xs px-2 py-0.5 rounded-full bg-amber-900/40 border border-amber-700/40 text-amber-300">
-                  {cat}
-                </span>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
-
-      <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
-        {CASES.map(c => {
-          const s = scores[c.id]
-          const isActive = c.id === activeId
-          const pct = s !== undefined ? Math.round((s.score / s.max) * 100) : null
-          const col = pct === null ? '#374151' : pct >= 80 ? '#10b981' : pct >= 60 ? '#f59e0b' : '#ef4444'
-          return (
-            <button key={c.id} onClick={() => onSelectCase(c.id)}
-              className="rounded-xl border p-3 text-left transition-all"
-              style={{
-                borderColor: isActive ? col : col + '50',
-                background:  isActive ? col + '18' : 'transparent',
-              }}>
-              <div className="flex items-start justify-between gap-1 mb-0.5">
-                <p className="text-xs font-semibold text-white">{c.title}</p>
-                <PriorityBadge priority={c.priority} />
-              </div>
-              <p className="text-xs text-gray-500 leading-snug mb-2" style={{ fontSize: '0.65rem' }}>
-                {c.category}
-              </p>
-              <p className="text-sm font-bold" style={{ color: col }}>
-                {s !== undefined ? `${s.score}/${s.max}` : '—'}
-              </p>
-            </button>
-          )
-        })}
-      </div>
-    </div>
+    <nav aria-label="Patient cases" className="grid grid-cols-3 gap-2 sm:grid-cols-6 mb-3">
+      {CASES.map(c => (
+        <button key={c.id} onClick={() => onSelectCase(c.id)} aria-pressed={c.id === activeId}
+          className={`rounded-xl border p-3 text-left ${c.id === activeId ? 'border-teal-400 bg-teal-400/10' : 'border-gray-800'}`}>
+          <p className="text-xs font-semibold text-white">{c.title}</p>
+          <PriorityBadge priority={c.priority} />
+          <p className="text-xs text-gray-400 mt-2">{c.category}</p>
+        </button>
+      ))}
+    </nav>
   )
 }
 
 // ── Main export ───────────────────────────────────────────────────────────────
 export default function PatientScenarios() {
   const [activeId, setActiveId] = useState('case1')
-  const [scores, setScores] = useState(() => {
-    const saved = readProgress('scores', {})
-    return saved && typeof saved === 'object' && !Array.isArray(saved) ? saved : {}
-  })
-  const [saveFailed, setSaveFailed] = useState(false)
-
-  useEffect(() => {
-    writeProgress('scores', scores)
-  }, [scores])
-
-  const handleSubmit = useCallback((caseId, answers, score) => {
-    const caseData = CASES.find(c => c.id === caseId)
-    const max = caseData?.questions.length ?? 5
-    const updated = { ...scores, [caseId]: { score, max, answers } }
-    setSaveFailed(!writeProgress('scores', updated))
-    setScores(updated)
-  }, [scores])
-
   const activeCase = CASES.find(c => c.id === activeId)
 
   return (
@@ -954,8 +888,7 @@ export default function PatientScenarios() {
       title="Patient Scenarios"
       description="Each case below presents a patient whose ECG reveals a change in their conduction system physiology. Your goal is not diagnosis — it is mechanism. For each case, identify which physiological property changed and explain why it produces the pattern you see."
     >
-      <ProgressDashboard
-        scores={scores}
+      <CaseSelector
         onSelectCase={setActiveId}
         activeId={activeId}
       />
@@ -972,13 +905,11 @@ export default function PatientScenarios() {
             </p>
           )}
         </div>
-        {saveFailed && <span role="status" className="text-xs text-amber-400">Browser storage is unavailable. Scores last for this session only.</span>}
       </div>
 
       <ScenarioCard
         key={activeId}
         caseData={activeCase}
-        onSubmit={(answers, score) => handleSubmit(activeId, answers, score)}
       />
     </ModulePage>
   )
