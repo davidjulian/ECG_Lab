@@ -1036,11 +1036,16 @@ export const PHYSIOLOGY_DEFAULTS = {
   avConductionVelocityPct: 100,
   avRecoveryBehavior:      'uniform',   // 'uniform' | 'fatigue'
   avRefractoryMs:          300,
+  // AV-junctional intrinsic automaticity (~40-60 bpm physiologically) — kept
+  // nonzero by default so a backup pacemaker is genuinely present, not an
+  // opt-in slider a student has to remember to turn on. Overdrive-suppressed
+  // by the faster default SA rate above, exactly as real AV-junctional
+  // tissue is, until SA slows/fails (see classifyCapture / buildEscapeOrStandstill).
+  purkinjeAutomaticity:   45,     // bpm, 0 = off
 
   // Section 4 — His-Purkinje
   leftBundleVelocityPct:  100,
   rightBundleVelocityPct: 100,
-  purkinjeAutomaticity:   0,      // bpm, 0 = off
 
   // Section 5 — Ventricular Myocardium
   ventricularApdMs:      380,    // ≈ QT interval

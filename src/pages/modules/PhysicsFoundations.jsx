@@ -5,7 +5,7 @@ import LeadPlacementLab from '../../components/LeadPlacementLab'
 import { useTabState, usePublishTabs } from '../../components/ModuleTabs'
 
 const TABS = [
-  { id: '1A', label: '1A · Charges', badge: 'Optional' },
+  { id: '1A', label: '1A · Charges' },
   { id: '1B', label: '1B · Dipole' },
   { id: '1C', label: '1C · Dot Product' },
   { id: '1D', label: '1D · Depolarization' },
@@ -529,12 +529,6 @@ function Sim1B() {
         // Dipole moment arrow (neg → pos)
         arrow(nx, ny, px, py, 255, 255, 255, 210, 3)
 
-        // p⃗ label
-        p.fill(255, 255, 255, 170); p.noStroke()
-        p.textAlign(p.LEFT, p.BOTTOM); p.textSize(13)
-        const la = angle - Math.PI / 2
-        p.text('p⃗', px + 16 * Math.cos(la), py + 16 * Math.sin(la))
-
         drawCharge(px, py, true)
         drawCharge(nx, ny, false)
 
@@ -649,6 +643,15 @@ function Sim1DCells() {
       let probeA = { x: xs[0] - 31, y: ROW_Y - CELL_H / 2 - 25 }
       let probeB = { x: xs[N - 1] + 31, y: ROW_Y - CELL_H / 2 - 25 }
       let dragA = false, dragB = false
+
+      // A "perpendicular" (zero) reading requires the two probes to be
+      // exact mirror images across the row (same x, equal-and-opposite
+      // distance from ROW_Y) — every cell is then equidistant from both,
+      // so V(A)=V(B) exactly. That's a precise target to hit by hand, so
+      // while dragging one probe close to its exact mirror point (relative
+      // to the OTHER probe's current position), snap it there instead of
+      // leaving the reading only approximately zero.
+      const SNAP_RADIUS = 18
 
       function smooth(f) { return f * f * (3 - 2 * f) }
 
@@ -978,6 +981,15 @@ function Sim1DCells() {
         p.textAlign(p.CENTER, p.BOTTOM); p.textSize(11)
         p.text('electrode reading ΔV(t)', CX, arrowY - 10)
 
+        // Snapped-perpendicular badge — confirms (and explains) why the
+        // reading is exactly 0 rather than just approximately small.
+        const isPerpendicular = Math.abs(probeA.x - probeB.x) < 0.5 && Math.abs((probeA.y - ROW_Y) + (probeB.y - ROW_Y)) < 0.5
+        if (isPerpendicular) {
+          p.fill(34, 211, 238, 220); p.noStroke()
+          p.textAlign(p.CENTER, p.TOP); p.textSize(11)
+          p.text('⟂ Perpendicular to depolarization — reading = 0 exactly', CX, arrowY + 10)
+        }
+
         // Info panel
         p.fill(15, 20, 30, 210); p.noStroke()
         p.rect(9, 9, 190, 42, 7)
@@ -1024,8 +1036,22 @@ function Sim1DCells() {
         if (Math.hypot(p.mouseX - probeB.x, p.mouseY - probeB.y) < PR + 6) dragB = true
       }
       p.mouseDragged = () => {
-        if (dragA) { probeA.x = p.mouseX; probeA.y = p.mouseY }
-        if (dragB) { probeB.x = p.mouseX; probeB.y = p.mouseY }
+        if (dragA) {
+          const mirrorX = probeB.x, mirrorY = 2 * ROW_Y - probeB.y
+          if (Math.hypot(p.mouseX - mirrorX, p.mouseY - mirrorY) < SNAP_RADIUS) {
+            probeA.x = mirrorX; probeA.y = mirrorY
+          } else {
+            probeA.x = p.mouseX; probeA.y = p.mouseY
+          }
+        }
+        if (dragB) {
+          const mirrorX = probeA.x, mirrorY = 2 * ROW_Y - probeA.y
+          if (Math.hypot(p.mouseX - mirrorX, p.mouseY - mirrorY) < SNAP_RADIUS) {
+            probeB.x = mirrorX; probeB.y = mirrorY
+          } else {
+            probeB.x = p.mouseX; probeB.y = p.mouseY
+          }
+        }
       }
       p.mouseReleased = () => { dragA = false; dragB = false }
     }
@@ -1387,26 +1413,29 @@ export default function PhysicsFoundations() {
           <p className="text-xs text-gray-400 leading-snug mb-2">
             Ten cells sit side by side, each polarized (+ outside) at rest. Press play: a wave of
             depolarization sweeps left→right, flipping each cell's exterior charge negative in turn,
-            then each cell repolarizes back to positive in the same order. Watch the net dipole
-            vector above the row — it isn't just the boundary between two cells, it's the sum of
-            every cell's charge state at that instant. Drag the <span className="text-emerald-400">teal (A)</span> and{' '}
+            then each cell repolarizes back to positive in the same order. Drag the{' '}
+            <span className="text-emerald-400">teal (A)</span> and{' '}
             <span className="text-purple-400">purple (B)</span> probes to see the actual voltage the
-            cells' changing charges produce at any point, and watch ΔV = V(A) − V(B) in the panel below —
-            this is exactly how a real electrode pair would measure it. Toggle field lines,
-            equipotentials, or current lines to see the field itself.
+            cells' changing charges produce at any point — the amber arrow above the row and
+            ΔV = V(A) − V(B) in the panel below both track it live, exactly how a real electrode
+            pair would measure it. Placing the probes exactly perpendicular to the row (one directly
+            above, one directly below, equal distances) makes every cell equidistant from both, so
+            the reading goes to exactly zero — try it: the probes snap into that mirrored alignment
+            when dragged close, since lining it up by hand alone is hard to get exact. Toggle field
+            lines, equipotentials, or current lines to see the field itself.
           </p>
 
           <Sim1DCells />
 
           <Callout>
-            <strong className="text-white">Insight:</strong> The strip-chart traces p(t) = Σ sᵢ(t)·(xᵢ−cx) —
-            it rises, peaks, and falls as the wave crosses the row, the same shape as a real QRS
-            complex. Notice the vector <em>reverses direction</em> during repolarization: the same
-            left→right activation order now sweeps recovery instead of depolarization, so the
-            negative and positive centroids swap sides. This is exactly the dipole from 1A/1B — here
-            you're watching it being generated cell by cell instead of assuming it, and the two
-            probes show that it's also directly measurable as a plain voltage difference, just like
-            1E's electrodes.
+            <strong className="text-white">Insight:</strong> The strip-chart traces the electrodes'
+            own ΔV(t) — it rises, peaks, and falls as the wave crosses the row, the same shape as a
+            real QRS complex. Notice the reading <em>reverses sign</em> during repolarization: the
+            same left→right activation order now sweeps recovery instead of depolarization, so which
+            side reads more positive flips. This is exactly the dipole from 1A/1B — here you're
+            watching it being generated cell by cell instead of assuming it, and the probes show
+            that it's also directly measurable as a plain voltage difference (including going to
+            exactly zero when they're placed perpendicular to the row), just like 1E's electrodes.
           </Callout>
 
           <ForwardLink onNext={() => setActive('1E')}>continues in 1E — place real electrodes on a body and see the projection live</ForwardLink>
@@ -1425,23 +1454,6 @@ export default function PhysicsFoundations() {
           </Callout>
 
           <LeadPlacementLab />
-
-          <div className="mt-2 rounded-lg bg-gray-900/70 border border-gray-800 p-2.5">
-            <p className="text-[10px] uppercase tracking-widest text-gray-600 mb-1.5">Guided experiments</p>
-            <div className="grid grid-cols-2 gap-2 text-xs text-gray-400">
-              {[
-                { n: '1', text: 'Place electrodes horizontally (left−right). This approximates Lead I (0°). Notice the P wave and T wave are positive, QRS tallest.' },
-                { n: '2', text: 'Rotate to approximately 60° (upper-left to lower-right). This is Lead II — the axis closest to the mean cardiac vector. Maximum QRS amplitude.' },
-                { n: '3', text: 'Place the axis perpendicular to Lead II (~−30°, upper-right to lower-left). The ECG approaches a flat line — pure isoelectric.' },
-                { n: '4', text: 'Flip the electrodes (swap + and −). The waveform inverts. Same axis, opposite polarity — amplitude unchanged, sign flipped.' },
-              ].map(({ n, text }) => (
-                <div key={n} className="flex gap-2">
-                  <span className="shrink-0 w-4 h-4 rounded-full bg-teal-950/60 border border-teal-800/50 text-teal-400 text-[10px] font-bold flex items-center justify-center">{n}</span>
-                  <p className="leading-snug">{text}</p>
-                </div>
-              ))}
-            </div>
-          </div>
         </Section>
       )}
     </ModulePage>

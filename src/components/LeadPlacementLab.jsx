@@ -8,14 +8,14 @@ function PauseIcon() { return <svg className="w-3.5 h-3.5" fill="currentColor" v
 const SPEEDS = [0.1, 0.25, 0.4, 0.7, 1]
 
 // ── Canvas sizes ──────────────────────────────────────────────────────────────
-// RENDER_SCALE shrinks the actual rendered canvases (to fit more on screen)
-// without touching any of the hand-tuned body-diagram coordinates below
-// (torso path, electrode positions, arrow math, etc.) — those are all still
-// authored in the original *_L "logical" space. Each frame draws through a
-// canvas transform that maps logical space onto the smaller physical
-// canvas, and mouse hit-testing divides back out by the same factor before
-// comparing against electrode positions (which stay in logical space).
-const RENDER_SCALE = 0.78
+// RENDER_SCALE resizes the actual rendered canvases relative to the
+// hand-tuned body-diagram coordinates below (torso path, electrode
+// positions, arrow math, etc.) — those are all still authored in the
+// original *_L "logical" space. Each frame draws through a canvas transform
+// that maps logical space onto the physical canvas, and mouse hit-testing
+// divides back out by the same factor before comparing against electrode
+// positions (which stay in logical space).
+const RENDER_SCALE = 1.15
 const BW_L = 500, BH_L = 330    // body canvas — logical drawing space
 const EW_L = 500, EH_L = 150    // ECG strip canvas — logical drawing space
 const BW = Math.round(BW_L * RENDER_SCALE), BH = Math.round(BH_L * RENDER_SCALE)   // actual body canvas pixels
@@ -179,21 +179,43 @@ export default function LeadPlacementLab() {
   })
   const dragging   = useRef(null)   // 'plus' | 'minus' | null
 
-  // RHYTHM is a fixed module constant, so the mean axis is fixed too —
-  // compute once per render (cheap) rather than per animation frame.
-  const axis = meanQRSAxis(RHYTHM.waves)
+  // RHYTHM is a fixed module constant, so its OWN (unrotated) mean axis is
+  // fixed too — compute once per render (cheap) rather than per animation
+  // frame. The Cardiac Vector Axis slider below then rotates this by
+  // `axisRotation` for display (see rotatedAxis).
+  const baseAxis = meanQRSAxis(RHYTHM.waves)
 
   const [showEinthoven, setShowEinthoven] = useState(true)
   const [playing, setPlaying] = useState(true)
   const [speed, setSpeed] = useState(TIME_SCALE)
+  // Degrees added to every wave's axis, i.e. rotates the whole instantaneous
+  // cardiac vector (and its P/QRS/T loop) rigidly, independent of electrode
+  // placement — lets the axis-deviation scenario be explored without moving
+  // the leads.
+  const [axisRotation, setAxisRotation] = useState(0)
 
   // Track state in refs for use inside rAF without re-subscribing the loop
   const showERef  = useRef(showEinthoven)
   const playingRef = useRef(playing)
   const speedRef   = useRef(speed)
+  const rotationRef = useRef(axisRotation)
   useEffect(() => { showERef.current = showEinthoven }, [showEinthoven])
   useEffect(() => { playingRef.current = playing }, [playing])
   useEffect(() => { speedRef.current = speed }, [speed])
+  useEffect(() => { rotationRef.current = axisRotation }, [axisRotation])
+
+  // A wave's contribution to a lead reading depends only on the DIFFERENCE
+  // between its own axis and the lead's axis (see cycleVoltage's
+  // projectionFactor), so subtracting `rot` from every lead axis we query is
+  // mathematically identical to adding `rot` to every wave's own axis —
+  // rotating the whole cardiac vector without touching ECGEngine.js at all.
+  // Reused for the live vectors below and for the static mean-axis display.
+  const rotRad = axisRotation * Math.PI / 180
+  const rotatedAxis = {
+    angleDeg:  (((baseAxis.angleDeg + axisRotation) + 180) % 360 + 360) % 360 - 180,
+    leadIMm:   baseAxis.leadIMm * Math.cos(rotRad) - baseAxis.leadAVFMm * Math.sin(rotRad),
+    leadAVFMm: baseAxis.leadIMm * Math.sin(rotRad) + baseAxis.leadAVFMm * Math.cos(rotRad),
+  }
 
   // Accumulated simulation time (ms) — advances only while playing, at the
   // current speed multiplier, so pausing freezes it and changing speed
@@ -231,10 +253,13 @@ export default function LeadPlacementLab() {
       const dist = Math.sqrt(dx * dx + dy * dy) || 1
       const ux = dx / dist, uy = dy / dist
       const leadAxisDeg = Math.atan2(dy, dx) * 180 / Math.PI
+      const rot = rotationRef.current
 
-      // Cardiac vector components (Lead I=x, aVF=y)
-      const Vx = ECGVoltage(tMs, cycleMs, waves, 0,  nativeCycleMs)
-      const Vy = ECGVoltage(tMs, cycleMs, waves, 90, nativeCycleMs)
+      // Cardiac vector components (Lead I=x, aVF=y) — querying at
+      // (0 - rot)/(90 - rot) instead of 0/90 rotates the whole cardiac
+      // vector by `rot` (see the rotationRef comment above).
+      const Vx = ECGVoltage(tMs, cycleMs, waves, 0  - rot, nativeCycleMs)
+      const Vy = ECGVoltage(tMs, cycleMs, waves, 90 - rot, nativeCycleMs)
 
       // Dot product = projection of cardiac vector onto lead axis. This is the
       // voltage the lead actually records; we present it to the student as a
@@ -289,8 +314,13 @@ export default function LeadPlacementLab() {
 
         // ── Mean QRS axis arrow — bold, bright, distinct from the indigo
         // instantaneous vector below. Same (Lead I, aVF) axis convention as
-        // Vx/Vy, just built from the net QRS deflection instead of one instant.
-        const { angleDeg: meanAngle, leadINet, leadAVFNet } = meanQRSAxis(waves)
+        // Vx/Vy, just built from the net QRS deflection instead of one
+        // instant, then rotated by `rot` the same way Vx/Vy are.
+        const { leadINet: baseI, leadAVFNet: baseAVF } = meanQRSAxis(waves)
+        const rotR = rot * Math.PI / 180
+        const leadINet  = baseI * Math.cos(rotR) - baseAVF * Math.sin(rotR)
+        const leadAVFNet = baseI * Math.sin(rotR) + baseAVF * Math.cos(rotR)
+        const meanAngle = (((Math.atan2(baseAVF, baseI) * 180 / Math.PI + rot) + 180) % 360 + 360) % 360 - 180
         const meanTipX = CX + leadINet  * DIPOLE_SCALE
         const meanTipY = CY + leadAVFNet * DIPOLE_SCALE
         drawArrow(bCtx, CX, CY, meanTipX, meanTipY, '#facc15', 4, true)
@@ -428,7 +458,7 @@ export default function LeadPlacementLab() {
       const by = EH_L * BL
       eCtx.beginPath()
       for (let x = 0; x <= EW_L; x++) {
-        const v = ECGVoltage(elapsed - (EW_L - x) / PX_MS, cycleMs, waves, leadAxisDeg, nativeCycleMs)
+        const v = ECGVoltage(elapsed - (EW_L - x) / PX_MS, cycleMs, waves, leadAxisDeg - rot, nativeCycleMs)
         const y = by - v * PX_MV
         if (x === 0) eCtx.moveTo(x, y); else eCtx.lineTo(x, y)
       }
@@ -501,6 +531,8 @@ export default function LeadPlacementLab() {
               on the body. Each electrode reads its own voltage (shown right below it); the ECG
               strip plots <span className="text-white">ΔV = V(+) − V(−)</span>, the{' '}
               <span className="text-white">dot product</span> of the cardiac vector with your lead axis.
+              The <span className="text-amber-400">Cardiac Vector Axis</span> slider below rotates the
+              vector itself — the other way to change the relationship, without moving electrodes.
             </p>
           </div>
           <button
@@ -570,32 +602,69 @@ export default function LeadPlacementLab() {
         </span>
       </div>
 
+      {/* Rotate the cardiac vector itself, independent of electrode placement */}
+      <div className="px-3 py-1.5 border-b border-gray-800 flex items-center gap-3">
+        <span className="text-xs uppercase tracking-widest text-gray-600 shrink-0">Cardiac Vector Axis</span>
+        <input
+          type="range"
+          min={-180}
+          max={180}
+          step={5}
+          value={axisRotation}
+          onChange={e => setAxisRotation(Number(e.target.value))}
+          className="flex-1 min-w-[120px] accent-amber-500"
+        />
+        <span className="text-xs font-mono text-gray-500 tabular-nums w-28 text-right">
+          {axisRotation >= 0 ? '+' : ''}{axisRotation}° {axisRotation !== 0 && '(rotated)'}
+        </span>
+      </div>
+
       <div className="flex gap-0">
-        {/* Body canvas */}
-        <div className="relative">
-          <canvas
-            ref={bodyRef}
-            width={BW}
-            height={BH}
-            style={{ width: '100%', maxWidth: BW, display: 'block', cursor: 'grab', backgroundColor: '#030712' }}
-            onMouseDown={onMouseDown}
-            onMouseMove={onMouseMove}
-            onMouseUp={onMouseUp}
-            onMouseLeave={onMouseUp}
-            onTouchStart={onTouchStart}
-            onTouchMove={onTouchMove}
-            onTouchEnd={onMouseUp}
-          />
-          {/* Floating annotation */}
-          <div className="absolute bottom-3 left-3 right-3 pointer-events-none">
-            <p className="text-xs text-gray-600 text-center font-mono">
-              drag electrodes to any position
-            </p>
+        {/* Left column: body canvas + ECG strip stacked below it, so the
+            strip fills the space the (taller) info panel would otherwise
+            leave blank next to a shorter canvas, instead of repeating as a
+            separate full-width section underneath everything. */}
+        <div className="flex-1 min-w-0">
+          <div className="relative">
+            <canvas
+              ref={bodyRef}
+              width={BW}
+              height={BH}
+              style={{ width: '100%', maxWidth: BW, display: 'block', cursor: 'grab', backgroundColor: '#030712' }}
+              onMouseDown={onMouseDown}
+              onMouseMove={onMouseMove}
+              onMouseUp={onMouseUp}
+              onMouseLeave={onMouseUp}
+              onTouchStart={onTouchStart}
+              onTouchMove={onTouchMove}
+              onTouchEnd={onMouseUp}
+            />
+            {/* Floating annotation */}
+            <div className="absolute bottom-3 left-3 right-3 pointer-events-none">
+              <p className="text-xs text-gray-600 text-center font-mono">
+                drag electrodes to any position
+              </p>
+            </div>
+          </div>
+
+          {/* ECG strip */}
+          <div className="border-t border-gray-800">
+            <div className="flex items-center gap-3 px-3 pt-2.5 pb-1">
+              <p className="text-xs uppercase tracking-widest text-gray-600">Live ECG output</p>
+              <p className="text-xs text-gray-700">— amplitude scales with cosθ</p>
+            </div>
+            <canvas
+              ref={ECGRef}
+              width={EW}
+              height={EH}
+              style={{ width: '100%', maxWidth: EW, display: 'block', backgroundColor: '#030712' }}
+            />
+            <p className="text-xs text-gray-700 text-right px-3 pb-2">40 ms / square · 0.5 mV / square</p>
           </div>
         </div>
 
         {/* Info panel */}
-        <div className="w-48 shrink-0 bg-gray-900/80 border-l border-gray-800 p-3 flex flex-col gap-3 justify-center">
+        <div className="w-64 shrink-0 bg-gray-900/80 border-l border-gray-800 p-4 flex flex-col gap-4 justify-center">
           <div>
             <p className="text-xs uppercase tracking-widest text-gray-600 mb-2">Physics</p>
             <p className="text-xs text-gray-400 leading-relaxed">
@@ -637,25 +706,10 @@ export default function LeadPlacementLab() {
 
           {showEinthoven && (
             <div className="border-t border-gray-800 pt-3">
-              <AxisSummaryPanel angleDeg={axis.angleDeg} leadIMm={axis.leadIMm} leadAVFMm={axis.leadAVFMm} />
+              <AxisSummaryPanel angleDeg={rotatedAxis.angleDeg} leadIMm={rotatedAxis.leadIMm} leadAVFMm={rotatedAxis.leadAVFMm} />
             </div>
           )}
         </div>
-      </div>
-
-      {/* ECG strip */}
-      <div className="border-t border-gray-800">
-        <div className="flex items-center gap-3 px-4 pt-3 pb-1">
-          <p className="text-xs uppercase tracking-widest text-gray-600">Live ECG output</p>
-          <p className="text-xs text-gray-700">— amplitude scales with cosθ</p>
-        </div>
-        <canvas
-          ref={ECGRef}
-          width={EW}
-          height={EH}
-          style={{ width: '100%', maxWidth: EW + 192, display: 'block', backgroundColor: '#030712' }}
-        />
-        <p className="text-xs text-gray-700 text-right px-4 pb-2">40 ms / square · 0.5 mV / square</p>
       </div>
 
     </div>

@@ -56,14 +56,14 @@ const PARAM_SECTIONS = [
   {
     id: 'av',
     label: 'AV Node',
-    description: 'The AV node is the only normal electrical connection between atria and ventricles. Its slow conduction velocity (0.05 m/s — 40× slower than Purkinje) creates the PR delay that allows atrial contraction to fill the ventricles before they contract.',
-    keys: ['avConductionVelocityPct', 'avRecoveryBehavior', 'avRefractoryMs'],
+    description: 'The AV node is the only normal electrical connection between atria and ventricles. Its slow conduction velocity (0.05 m/s — 40× slower than Purkinje) creates the PR delay that allows atrial contraction to fill the ventricles before they contract. Like the SA node, AV-junctional tissue has its own intrinsic automaticity — normally overdrive-suppressed by the faster SA node, it emerges as an escape rhythm whenever SA input is too slow or fails to arrive.',
+    keys: ['avConductionVelocityPct', 'avRecoveryBehavior', 'avRefractoryMs', 'purkinjeAutomaticity'],
   },
   {
     id: 'his',
     label: 'His-Purkinje System',
     description: 'Conducts at 2-4 m/s — 40-80× faster than the AV node. Ensures both ventricles activate nearly simultaneously, producing a narrow QRS. When a bundle branch fails, the affected ventricle must be activated slowly through muscle — widening the QRS.',
-    keys: ['leftBundleVelocityPct', 'rightBundleVelocityPct', 'purkinjeAutomaticity'],
+    keys: ['leftBundleVelocityPct', 'rightBundleVelocityPct'],
   },
   {
     id: 'ventricle',
@@ -713,6 +713,23 @@ export default function ECGSimulator() {
                     </div>
                   )}
                 </div>
+                <div>
+                  <ParamSlider
+                    label="AV Junctional Automaticity (bpm)"
+                    value={purkinjeAutomaticity} min={0} max={50} unit=" bpm"
+                    onChange={v => set('purkinjeAutomaticity', v)}
+                    hint="AV-junctional tissue has intrinsic automaticity — normally at ~40-60 bpm — but is normally suppressed by the faster SA node (overdrive suppression). This slider controls what happens when SA node suppression is removed or AV conduction fails: a narrow-QRS junctional escape rhythm. A distal ventricular escape (wide QRS) is the separate Ventricular Ectopic Automaticity slider."
+                  />
+                  {purkinjeAutomaticity > 0 && (
+                    <p className="text-xs mt-1.5 leading-snug" style={{ color: derived.escapeSource === 'purkinje' ? '#f59e0b' : '#6b7280' }}>
+                      {derived.escapeSource === 'purkinje' && derived.avRatio === 1
+                        ? `AV conduction is intact, but this focus (${Math.round(derived.effectivePurkinjeRate)} bpm) is now firing faster than the SA node (${Math.round(derived.effectiveSaRate)} bpm) — it has taken over control before any sinus impulse arrives.`
+                        : derived.escapeSource === 'purkinje'
+                        ? "The SA node's impulses aren't reaching the ventricles. The AV junction is now acting as an escape pacemaker — without it, the ventricles would not contract at all."
+                        : `SA rate (${Math.round(derived.effectiveSaRate)} bpm) > AV junctional rate (${Math.round(derived.effectivePurkinjeRate)} bpm) — SA node is suppressing this backup pacemaker through overdrive suppression. Try slowing the SA node below the junctional rate, or blocking AV conduction, to see the escape rhythm emerge.`}
+                    </p>
+                  )}
+                </div>
               </>
             )}
 
@@ -742,23 +759,6 @@ export default function ECGSimulator() {
                       : 'Carries depolarization to the right ventricular myocardium and interventricular septum.'
                   }
                 />
-                <div>
-                  <ParamSlider
-                    label="Purkinje Ectopic Automaticity (bpm)"
-                    value={purkinjeAutomaticity} min={0} max={50} unit=" bpm"
-                    onChange={v => set('purkinjeAutomaticity', v)}
-                    hint="Purkinje cells have intrinsic automaticity at 20-40 bpm but are normally suppressed by the faster SA node (overdrive suppression). This slider controls what happens when SA node suppression is removed or AV conduction fails. Modeled here as a narrow-QRS, junctional-level escape — a distal ventricular escape (wide QRS) is the separate Ventricular Ectopic Automaticity slider."
-                  />
-                  {purkinjeAutomaticity > 0 && (
-                    <p className="text-xs mt-1.5 leading-snug" style={{ color: derived.escapeSource === 'purkinje' ? '#f59e0b' : '#6b7280' }}>
-                      {derived.escapeSource === 'purkinje' && derived.avRatio === 1
-                        ? `AV conduction is intact, but this focus (${Math.round(derived.effectivePurkinjeRate)} bpm) is now firing faster than the SA node (${Math.round(derived.effectiveSaRate)} bpm) — it has taken over control before any sinus impulse arrives.`
-                        : derived.escapeSource === 'purkinje'
-                        ? "The SA node's impulses are blocked at the AV node. The Purkinje system is now acting as an escape pacemaker — without it, the ventricles would not contract at all."
-                        : `SA rate (${Math.round(derived.effectiveSaRate)} bpm) > Purkinje rate (${Math.round(derived.effectivePurkinjeRate)} bpm) — SA node is suppressing this backup pacemaker through overdrive suppression. Try slowing the SA node below the Purkinje rate to see the escape rhythm emerge.`}
-                    </p>
-                  )}
-                </div>
               </>
             )}
 
