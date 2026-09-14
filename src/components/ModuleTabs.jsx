@@ -10,7 +10,7 @@ import { useModuleTabsContext } from '../context/ModuleTabsContext'
 // or nothing's been stored yet.
 function readStored(moduleId) {
   try {
-    const raw = localStorage.getItem(`ekg-tabs:${moduleId}`)
+    const raw = localStorage.getItem(`ecg-lab:v1:tabs:${moduleId}`)
     if (!raw) return null
     const parsed = JSON.parse(raw)
     return { active: parsed.active ?? null, visited: new Set(parsed.visited ?? []) }
@@ -21,7 +21,7 @@ function readStored(moduleId) {
 
 function writeStored(moduleId, active, visited) {
   try {
-    localStorage.setItem(`ekg-tabs:${moduleId}`, JSON.stringify({ active, visited: [...visited] }))
+    localStorage.setItem(`ecg-lab:v1:tabs:${moduleId}`, JSON.stringify({ active, visited: [...visited] }))
   } catch {
     // ignore — private browsing / storage disabled
   }

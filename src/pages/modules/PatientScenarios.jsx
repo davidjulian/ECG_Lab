@@ -1,6 +1,5 @@
 ﻿import { useEffect, useRef, useState, useCallback, useMemo } from 'react'
-import { useAuth } from '../../context/AuthContext'
-import { supabase } from '../../lib/supabase'
+import { readProgress, writeProgress } from '../../lib/localProgress'
 import ModulePage from '../../components/ModulePage'
 import {
   RHYTHMS, RHYTHM_PRESETS, complexWaves,
@@ -133,7 +132,7 @@ const CASES = [
         correct: 1,
       },
     ],
-    explanation: `Atrial fibrillation arises from chaotic electrical activity — multiple simultaneous reentrant wavelets circling through the atrial myocardium at 350–600 per minute. No single wavefront propagates coherently, so no organized P wave forms; instead, the baseline shows low-amplitude fibrillatory undulations.\n\nThe AV node acts as a gatekeeper, randomly filtering these chaotic impulses. Because conduction depends on which impulses arrive when the AV node is not refractory, the ventricular response is irregularly irregular — the hallmark of AF.\n\nAs you saw in Module 2C, normal atrial contraction squeezes blood from the atria into the ventricles just before the QRS (the "atrial kick"). In AF, this coordinated contraction is lost. Blood pools in the left atrial appendage — a small muscular pouch off the left atrium — and can form clots. If a clot embolizes to the cerebral circulation, stroke results. This is why anticoagulation is the cornerstone of AF management.`,
+    explanation: `Atrial fibrillation arises from chaotic electrical activity — multiple simultaneous reentrant wavelets circling through the atrial myocardium at 350–600 per minute. No single wavefront propagates coherently, so no organized P wave forms; instead, the baseline shows low-amplitude fibrillatory undulations.\n\nThe AV node acts as a gatekeeper, randomly filtering these chaotic impulses. Because conduction depends on which impulses arrive when the AV node is not refractory, the ventricular response is irregularly irregular — the hallmark of AF.\n\nRecall that normal atrial contraction squeezes blood from the atria into the ventricles just before the QRS (the "atrial kick"). In AF, this coordinated contraction is lost. Blood pools in the left atrial appendage — a small muscular pouch off the left atrium — and can form clots. If a clot embolizes to the cerebral circulation, stroke results. This is why anticoagulation is the cornerstone of AF management.`,
   },
 
   {
@@ -204,7 +203,7 @@ const CASES = [
         correct: 1,
       },
     ],
-    explanation: `Third-degree (complete) AV block means no atrial impulse can cross the AV node. The atria and ventricles beat completely independently — AV dissociation in its most extreme form.\n\nThe SA node continues firing at its intrinsic rate (~75 bpm), generating normal P waves that march through the tracing on their own schedule. Below the block, a subsidiary pacemaker takes over. When this escape rhythm originates in the ventricular myocardium (idioventricular escape, 20–40 bpm), it is far slower than junctional (~50 bpm) or fascicular (~40 bpm) escapes.\n\nAs you saw in Module 2C, the normal conduction sequence routes impulses through the Bundle of His → bundle branches → Purkinje fibers, activating ventricular muscle nearly simultaneously. When the escape pacemaker fires from ventricular muscle directly, it spreads impulse cell-to-cell — much slower, and in an abnormal direction. The result is a wide (here >160 ms), bizarrely shaped QRS with a discordant T wave.\n\nAtropine blocks vagal tone at the SA and AV nodes, accelerating sinus rate. But the ventricular escape pacemaker has no significant vagal innervation — atropine does not reliably speed it up. Definitive treatment is transvenous pacing followed by permanent pacemaker implantation.`,
+    explanation: `Third-degree (complete) AV block means no atrial impulse can cross the AV node. The atria and ventricles beat completely independently — AV dissociation in its most extreme form.\n\nThe SA node continues firing at its intrinsic rate (~75 bpm), generating normal P waves that march through the tracing on their own schedule. Below the block, a subsidiary pacemaker takes over. When this escape rhythm originates in the ventricular myocardium (idioventricular escape, 20–40 bpm), it is far slower than junctional (~50 bpm) or fascicular (~40 bpm) escapes.\n\nRecall that the normal conduction sequence routes impulses through the Bundle of His → bundle branches → Purkinje fibers, activating ventricular muscle nearly simultaneously. When the escape pacemaker fires from ventricular muscle directly, it spreads impulse cell-to-cell — much slower, and in an abnormal direction. The result is a wide (here >160 ms), bizarrely shaped QRS with a discordant T wave.\n\nAtropine blocks vagal tone at the SA and AV nodes, accelerating sinus rate. But the ventricular escape pacemaker has no significant vagal innervation — atropine does not reliably speed it up. Definitive treatment is transvenous pacing followed by permanent pacemaker implantation.`,
   },
 
   {
@@ -279,7 +278,7 @@ const CASES = [
         correct: 1,
       },
     ],
-    explanation: `Mobitz II second-degree AV block is defined by a fixed PR interval on all conducted beats, with sudden — unpredictable — failure of a P wave to conduct. In 2:1 block, every other P wave is blocked.\n\nThe critical distinction from Wenckebach (Mobitz I): in Wenckebach, the AV node progressively fatigues with each beat (PR lengthens) until one P wave fails, then the cycle resets. This reflects AV nodal disease and is relatively benign. In Mobitz II, conduction is all-or-nothing — conducted beats traverse a functioning AV node, but the block occurs lower, at the Bundle of His or bundle branches. This is why the QRS is often slightly wide (bundle branch level involvement).\n\nAs you saw in Module 2C, the infranodal conduction system — His bundle, fascicles, Purkinje network — has a much less reliable intrinsic rate (<30–40 bpm) than the AV node (~50 bpm). If Mobitz II deteriorates to complete block, the resulting escape is dangerously slow. This patient's prior anterior MI is relevant: the LAD supplies the bundle branches, and fibrotic degeneration years after infarction is a classic cause of late infranodal block. Pacemaker implantation is the definitive treatment.`,
+    explanation: `Mobitz II second-degree AV block is defined by a fixed PR interval on all conducted beats, with sudden — unpredictable — failure of a P wave to conduct. In 2:1 block, every other P wave is blocked.\n\nThe critical distinction from Wenckebach (Mobitz I): in Wenckebach, the AV node progressively fatigues with each beat (PR lengthens) until one P wave fails, then the cycle resets. This reflects AV nodal disease and is relatively benign. In Mobitz II, conduction is all-or-nothing — conducted beats traverse a functioning AV node, but the block occurs lower, at the Bundle of His or bundle branches. This is why the QRS is often slightly wide (bundle branch level involvement).\n\nRecall that the infranodal conduction system — His bundle, fascicles, Purkinje network — has a much less reliable intrinsic rate (<30–40 bpm) than the AV node (~50 bpm). If Mobitz II deteriorates to complete block, the resulting escape is dangerously slow. This patient's prior anterior MI is relevant: the LAD supplies the bundle branches, and fibrotic degeneration years after infarction is a classic cause of late infranodal block. Pacemaker implantation is the definitive treatment.`,
   },
 
   {
@@ -354,7 +353,7 @@ const CASES = [
         correct: 3,
       },
     ],
-    explanation: `Sinus arrhythmia is a physiological variation in heart rate driven by respiration. During inspiration, intrathoracic pressure falls, venous return increases, and — through the Bainbridge reflex and reduced vagal tone — the SA node speeds up slightly. During expiration, vagal tone increases and the rate slows.\n\nThe diagnostic key: P waves are present, morphologically uniform, and each is followed by a QRS with a constant PR interval. The SA node is the pacemaker throughout — only its rate varies. This is fundamentally different from atrial fibrillation (no organized P waves, randomly irregular RR) or sick sinus syndrome (true pauses or arrest).\n\nSinus arrhythmia is especially prominent in young, well-conditioned athletes because chronic aerobic training increases resting vagal tone. High vagal tone slows the basal sinus rate; when inspiration transiently withdraws that tone, the rate acceleration is more dramatic on this high-vagal baseline — producing more obvious RR variation.\n\nAs you saw in Module 2, the SA node's intrinsic rate is continuously sculpted by autonomic input. Sinus arrhythmia is the normal result of that sculpting. No treatment is indicated; clearing this athlete to compete is appropriate.`,
+    explanation: `Sinus arrhythmia is a physiological variation in heart rate driven by respiration. During inspiration, intrathoracic pressure falls, venous return increases, and — through the Bainbridge reflex and reduced vagal tone — the SA node speeds up slightly. During expiration, vagal tone increases and the rate slows.\n\nThe diagnostic key: P waves are present, morphologically uniform, and each is followed by a QRS with a constant PR interval. The SA node is the pacemaker throughout — only its rate varies. This is fundamentally different from atrial fibrillation (no organized P waves, randomly irregular RR) or sick sinus syndrome (true pauses or arrest).\n\nSinus arrhythmia is especially prominent in young, well-conditioned athletes because chronic aerobic training increases resting vagal tone. High vagal tone slows the basal sinus rate; when inspiration transiently withdraws that tone, the rate acceleration is more dramatic on this high-vagal baseline — producing more obvious RR variation.\n\nRecall that the SA node's intrinsic rate is continuously sculpted by autonomic input. Sinus arrhythmia is the normal result of that sculpting. No treatment is indicated; clearing this athlete to compete is appropriate.`,
   },
 
   {
@@ -429,7 +428,7 @@ const CASES = [
         correct: 1,
       },
     ],
-    explanation: `Premature ventricular contractions (PVCs) arise from an ectopic focus in the ventricular myocardium, firing before the next expected sinus beat. Because the impulse originates in muscle — not the specialized conduction system — it spreads slowly cell-to-cell, producing a wide (> 120 ms), bizarrely shaped QRS with a discordant T wave. As you saw in Module 2C, the normal sequence (His → bundle branches → Purkinje → muscle) produces a narrow QRS because all ventricular regions are activated nearly simultaneously; an ectopic ventricular focus produces the opposite.\n\nAfter the PVC, the ventricle is refractory. The next SA node impulse arrives on its normal schedule but cannot conduct — the myocardium is still depolarized from the PVC. The next-after-that sinus beat arrives normally, creating a pause equal to exactly 2 × the normal RR interval: the fully compensatory pause. (If there were retrograde conduction resetting the sinus node, the pause would be non-compensatory and shorter.)\n\nThe R-on-T phenomenon occurs when a PVC fires during the T wave — specifically the ascending limb (the relative refractory period, corresponding to phase 3 of the action potential). During this window, some cells have repolarized enough to accept a new impulse while adjacent cells haven't, creating the conditions for reentry and ventricular fibrillation. In a structurally normal heart, R-on-T rarely causes VF. In the setting of acute MI — as with this patient — ischemic myocardium has heterogeneous action potential durations, dramatically widening this vulnerable window and increasing R-on-T risk of triggering VF. Continuous monitoring, IV access, and rapid revascularization are the priorities.`,
+    explanation: `Premature ventricular contractions (PVCs) arise from an ectopic focus in the ventricular myocardium, firing before the next expected sinus beat. Because the impulse originates in muscle — not the specialized conduction system — it spreads slowly cell-to-cell, producing a wide (> 120 ms), bizarrely shaped QRS with a discordant T wave. Recall that the normal sequence (His → bundle branches → Purkinje → muscle) produces a narrow QRS because all ventricular regions are activated nearly simultaneously; an ectopic ventricular focus produces the opposite.\n\nAfter the PVC, the ventricle is refractory. The next SA node impulse arrives on its normal schedule but cannot conduct — the myocardium is still depolarized from the PVC. The next-after-that sinus beat arrives normally, creating a pause equal to exactly 2 × the normal RR interval: the fully compensatory pause. (If there were retrograde conduction resetting the sinus node, the pause would be non-compensatory and shorter.)\n\nThe R-on-T phenomenon occurs when a PVC fires during the T wave — specifically the ascending limb (the relative refractory period, corresponding to phase 3 of the action potential). During this window, some cells have repolarized enough to accept a new impulse while adjacent cells haven't, creating the conditions for reentry and ventricular fibrillation. In a structurally normal heart, R-on-T rarely causes VF. In the setting of acute MI — as with this patient — ischemic myocardium has heterogeneous action potential durations, dramatically widening this vulnerable window and increasing R-on-T risk of triggering VF. Continuous monitoring, IV access, and rapid revascularization are the priorities.`,
   },
 
   {
@@ -500,7 +499,7 @@ const CASES = [
         correct: 1,
       },
     ],
-    explanation: `Atrial flutter is a macroreentrant arrhythmia — a single large reentrant circuit rotating around an anatomical obstacle, classically the tricuspid annulus in the right atrium (the cavotricuspid isthmus). The atria depolarize at a regular 250–350 bpm (typically ~300 bpm), producing the sawtooth or flutter wave pattern.\n\nThe AV node cannot safely conduct 300 impulses per minute to the ventricles. It acts as a physiological filter: most commonly conducting every other flutter wave (2:1 block → ventricular rate ~150 bpm). When conduction alternates between 2:1 and 3:1 — as in this patient — the ventricular response becomes irregular, superficially resembling atrial fibrillation. The diagnostic key is the organized sawtooth baseline at exactly 300 bpm, visible between QRS complexes.\n\nHyperthyroidism increases catecholamine sensitivity and shortens atrial refractory periods (thyroid hormone enhances If channels and adrenergic receptor expression in atrial myocytes). Shorter refractory periods allow reentrant circuits to complete a loop before the tissue ahead has recovered, sustaining flutter. Even treated Graves disease carries residual risk of atrial arrhythmias.\n\nAs you saw in Module 2A, the tricuspid annulus is a fixed anatomical structure in the right atrium — a natural obstacle around which a reentrant circuit can organize. The progressive dyspnea and crackles suggest this patient has developed rate-related diastolic dysfunction; restoring a normal ventricular rate through rate control or cardioversion is a clinical priority alongside anticoagulation given her prior PE.`,
+    explanation: `Atrial flutter is a macroreentrant arrhythmia — a single large reentrant circuit rotating around an anatomical obstacle, classically the tricuspid annulus in the right atrium (the cavotricuspid isthmus). The atria depolarize at a regular 250–350 bpm (typically ~300 bpm), producing the sawtooth or flutter wave pattern.\n\nThe AV node cannot safely conduct 300 impulses per minute to the ventricles. It acts as a physiological filter: most commonly conducting every other flutter wave (2:1 block → ventricular rate ~150 bpm). When conduction alternates between 2:1 and 3:1 — as in this patient — the ventricular response becomes irregular, superficially resembling atrial fibrillation. The diagnostic key is the organized sawtooth baseline at exactly 300 bpm, visible between QRS complexes.\n\nHyperthyroidism increases catecholamine sensitivity and shortens atrial refractory periods (thyroid hormone enhances If channels and adrenergic receptor expression in atrial myocytes). Shorter refractory periods allow reentrant circuits to complete a loop before the tissue ahead has recovered, sustaining flutter. Even treated Graves disease carries residual risk of atrial arrhythmias.\n\nRecall that the tricuspid annulus is a fixed anatomical structure in the right atrium — a natural obstacle around which a reentrant circuit can organize. The progressive dyspnea and crackles suggest this patient has developed rate-related diastolic dysfunction; restoring a normal ventricular rate through rate control or cardioversion is a clinical priority alongside anticoagulation given her prior PE.`,
   },
 ]
 
@@ -927,48 +926,31 @@ function ProgressDashboard({ scores, onSelectCase, activeId }) {
 
 // ── Main export ───────────────────────────────────────────────────────────────
 export default function PatientScenarios() {
-  const { user }                  = useAuth()
-  const [activeId, setActiveId]   = useState('case1')
-  const [scores, setScores]       = useState({})
-  const [saving, setSaving]       = useState(false)
+  const [activeId, setActiveId] = useState('case1')
+  const [scores, setScores] = useState(() => {
+    const saved = readProgress('scores', {})
+    return saved && typeof saved === 'object' && !Array.isArray(saved) ? saved : {}
+  })
+  const [saveFailed, setSaveFailed] = useState(false)
 
   useEffect(() => {
-    if (!user) return
-    supabase
-      .from('scenario_scores')
-      .select('case_id, score, max_score')
-      .eq('user_id', user.id)
-      .then(({ data }) => {
-        if (!data) return
-        const map = {}
-        data.forEach(row => { map[row.case_id] = { score: row.score, max: row.max_score } })
-        setScores(map)
-      })
-  }, [user])
+    writeProgress('scores', scores)
+  }, [scores])
 
-  const handleSubmit = useCallback(async (caseId, answers, score) => {
+  const handleSubmit = useCallback((caseId, answers, score) => {
     const caseData = CASES.find(c => c.id === caseId)
-    const max      = caseData?.questions.length ?? 5
-    setScores(prev => ({ ...prev, [caseId]: { score, max } }))
-    if (!user) return
-    setSaving(true)
-    await supabase.from('scenario_scores').upsert({
-      user_id:      user.id,
-      case_id:      caseId,
-      score,
-      max_score:    max,
-      answers,
-      submitted_at: new Date().toISOString(),
-    }, { onConflict: 'user_id,case_id' })
-    setSaving(false)
-  }, [user])
+    const max = caseData?.questions.length ?? 5
+    const updated = { ...scores, [caseId]: { score, max, answers } }
+    setSaveFailed(!writeProgress('scores', updated))
+    setScores(updated)
+  }, [scores])
 
   const activeCase = CASES.find(c => c.id === activeId)
 
   return (
     <ModulePage
       moduleId="scenarios"
-      number={4}
+      number={3}
       title="Patient Scenarios"
       description="Each case below presents a patient whose ECG reveals a change in their conduction system physiology. Your goal is not diagnosis — it is mechanism. For each case, identify which physiological property changed and explain why it produces the pattern you see."
     >
@@ -990,7 +972,7 @@ export default function PatientScenarios() {
             </p>
           )}
         </div>
-        {saving && <span className="text-xs text-gray-500 italic">Saving score…</span>}
+        {saveFailed && <span role="status" className="text-xs text-amber-400">Browser storage is unavailable. Scores last for this session only.</span>}
       </div>
 
       <ScenarioCard

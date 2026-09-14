@@ -1,4 +1,5 @@
-﻿import { useNavigate } from 'react-router-dom'
+﻿import AboutModal from '../components/AboutModal'
+import { useNavigate } from 'react-router-dom'
 import { useMode } from '../context/ModeContext'
 
 function ModeCard({ title, subtitle, description, features, accent, onClick }) {
@@ -62,7 +63,7 @@ export default function ModeSelect() {
                 stroke="#10b981" strokeWidth="2"
                 strokeLinecap="round" strokeLinejoin="round" fill="none"/>
             </svg>
-            <span className="text-white font-semibold text-lg">ECG Learning Platform</span>
+            <span className="text-white font-semibold text-lg">ECG Lab</span>
           </div>
           <p className="text-gray-500 text-sm">Choose how you'd like to explore today</p>
         </div>
@@ -71,10 +72,10 @@ export default function ModeSelect() {
           <ModeCard
             title="Lab mode"
             subtitle="Guided — complete in order"
-            description="Work through all four modules sequentially. Each section unlocks the next, building from physics fundamentals to live ECG interpretation to patient diagnosis."
+            description="Work through all three modules sequentially. Each section unlocks the next, building from physics fundamentals to live ECG interpretation to patient diagnosis."
             features={[
               'Modules unlock as you progress',
-              'Progress is saved across sessions',
+              'Progress is saved in this browser when available',
               'Designed for first-time use in class',
               '"Mark complete" advances you forward',
             ]}
@@ -96,6 +97,7 @@ export default function ModeSelect() {
           />
         </div>
 
+        <div className="text-center mt-6"><AboutModal /></div>
         <p className="text-center text-gray-600 text-xs mt-6">
           You can switch modes at any time from the sidebar
         </p>
