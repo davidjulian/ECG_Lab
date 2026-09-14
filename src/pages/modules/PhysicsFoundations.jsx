@@ -247,7 +247,14 @@ function Sim1A() {
       }
 
       // ── Equipotentials: marching squares over a cached voltage grid ──
-      const gsEq = 6, cols = W / gsEq, rows = H / gsEq
+      // cols/rows MUST be integers — they're used both as the Float32Array
+      // stride and as loop bounds. A fractional stride silently breaks
+      // every grid write/read past row 0 (non-integer typed-array indices
+      // are no-ops, not errors), which defeats the "skip uniform cells"
+      // fast path almost everywhere and forces tens of thousands of
+      // degenerate/NaN line draws per frame — enough to lock up the tab
+      // once Equipotentials is toggled on.
+      const gsEq = 6, cols = Math.round(W / gsEq), rows = Math.round(H / gsEq)
       const cornerV = new Float32Array((cols + 1) * (rows + 1))
 
       function computeCornerGrid() {
