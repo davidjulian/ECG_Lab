@@ -62,8 +62,7 @@ const CASES = [
   {
     id: 'case1',
     title: 'Case 1',
-    priority: 'required',
-    category: 'Atrial Fibrillation',
+    chiefComplaint: 'Palpitations and fatigue',
     rhythmId: 'atrialFibrillation',
     scaffolded: true,
     hints: [
@@ -137,8 +136,7 @@ const CASES = [
   {
     id: 'case2',
     title: 'Case 2',
-    priority: 'required',
-    category: '3rd-Degree AV Block',
+    chiefComplaint: 'Found unresponsive',
     rhythmId: 'thirdDegreeBlock',
     scaffolded: false,
     hints: [],
@@ -208,8 +206,7 @@ const CASES = [
   {
     id: 'case3',
     title: 'Case 3',
-    priority: 'extension',
-    category: 'Mobitz II (2:1 Block)',
+    chiefComplaint: 'Lightheadedness and fainting',
     rhythmId: 'mobitzII',
     scaffolded: false,
     hints: [],
@@ -283,8 +280,7 @@ const CASES = [
   {
     id: 'case4',
     title: 'Case 4',
-    priority: 'extension',
-    category: 'Sinus Arrhythmia',
+    chiefComplaint: 'Asymptomatic sports physical',
     rhythmBuilder: buildSinusArrhythmia,
     scaffolded: false,
     hints: [],
@@ -358,8 +354,7 @@ const CASES = [
   {
     id: 'case5',
     title: 'Case 5',
-    priority: 'extension',
-    category: 'NSR with PVCs / R-on-T',
+    chiefComplaint: 'Chest pain and skipped beats',
     rhythmId: 'pvcs',
     scaffolded: false,
     hints: [],
@@ -433,8 +428,7 @@ const CASES = [
   {
     id: 'case6',
     title: 'Case 6',
-    priority: 'extension',
-    category: 'Atrial Flutter (Variable Block)',
+    chiefComplaint: 'Worsening shortness of breath',
     rhythmBuilder: buildVariableFlutter,
     scaffolded: false,
     hints: [],
@@ -502,28 +496,6 @@ const CASES = [
   },
 ]
 
-// Priority signal only — does not hide or lock the extension cases.
-const PRIORITY_LABEL = {
-  required:  'Required',
-  extension: 'Extension — complete if time allows',
-}
-function PriorityBadge({ priority }) {
-  const label = PRIORITY_LABEL[priority]
-  if (!label) return null
-  const isRequired = priority === 'required'
-  return (
-    <span
-      className="inline-block text-[9px] uppercase tracking-wide px-1.5 py-0.5 rounded-full border shrink-0"
-      style={isRequired
-        ? { color: '#10b981', backgroundColor: '#10b98118', borderColor: '#10b98150' }
-        : { color: '#9ca3af', backgroundColor: '#37415130', borderColor: '#4b556380' }}
-    >
-      {label}
-    </span>
-  )
-}
-
-// ── ECG Strip renderer ────────────────────────────────────────────────────────
 function drawGrid(ctx, w, h) {
   const byY = h * BL
   const step = 40 * PX_MS
@@ -868,8 +840,7 @@ function CaseSelector({ onSelectCase, activeId }) {
         <button key={c.id} onClick={() => onSelectCase(c.id)} aria-pressed={c.id === activeId}
           className={`rounded-xl border p-3 text-left ${c.id === activeId ? 'border-teal-400 bg-teal-400/10' : 'border-gray-800'}`}>
           <p className="text-xs font-semibold text-white">{c.title}</p>
-          <PriorityBadge priority={c.priority} />
-          <p className="text-xs text-gray-400 mt-2">{c.category}</p>
+          <p className="text-xs text-gray-400 mt-2">{c.chiefComplaint}</p>
         </button>
       ))}
     </nav>
@@ -886,7 +857,7 @@ export default function PatientScenarios() {
       moduleId="scenarios"
       number={3}
       title="Patient Scenarios"
-      description="Each case below presents a patient whose ECG reveals a change in their conduction system physiology. Your goal is not diagnosis — it is mechanism. For each case, identify which physiological property changed and explain why it produces the pattern you see."
+      description="Each case below presents a patient whose ECG reveals a change in their conduction system physiology. For each case, identify the ECG rhythm, determine which physiological property changed, and explain why it produces the pattern you see."
     >
       <CaseSelector
         onSelectCase={setActiveId}
@@ -896,8 +867,7 @@ export default function PatientScenarios() {
       <div className="mb-2 flex items-center justify-between">
         <div>
           <h2 className="text-base font-semibold text-white flex items-center gap-2">
-            {activeCase.title}: {activeCase.category}
-            <PriorityBadge priority={activeCase.priority} />
+            {activeCase.title}: {activeCase.chiefComplaint}
           </h2>
           {activeCase.scaffolded && (
             <p className="text-xs text-amber-400/70 mt-0.5">
