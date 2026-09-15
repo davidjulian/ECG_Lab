@@ -1786,13 +1786,13 @@ function HeartDropTarget({ clockRef, rhythm, selectedRegion, onSelect }) {
             zIndex: 20,
             pointerEvents: dragging ? 'none' : 'auto',
           }}
-          title="Drag onto a region of the heart"
+          title="Intracellular microelectrode — drag to choose a cell recording site"
         >
           <ElectrodeIcon />
         </div>
       </div>
       <p className="text-[11px] text-gray-500 mt-2">
-        {selectedRegion ? <>Recording from: <span className="text-cyan-300">{AP_REGIONS.find(r => r.key === selectedRegion)?.label}</span></> : 'Drag the electrode onto the heart'}
+        {selectedRegion ? <>Intracellular recording site: <span className="text-cyan-300">{AP_REGIONS.find(r => r.key === selectedRegion)?.label}</span></> : 'Drag the intracellular microelectrode onto the heart'}
       </p>
     </div>
   )
@@ -1854,7 +1854,7 @@ function ECGVsAPSection({ rhythm }) {
       {/* TOP — the heart itself: drag the electrode here */}
       <div className="rounded-xl border border-gray-800 bg-gray-900/60 p-4 flex flex-col items-center">
         <p className="text-xs text-gray-500 mb-3 text-center max-w-md">
-          Drag the electrode onto the heart below to record from that region — the two traces underneath update to show what that electrode (left) and the body surface (right) each see, simultaneously.
+          The yellow icon represents an intracellular microelectrode. Drag its tip to a heart region to view a cell’s action potential there. The ECG uses a separate, fixed pair of body surface electrodes and stays the same when you move this microelectrode.
         </p>
         <HeartDropTarget
           clockRef={clockRef}
@@ -1869,7 +1869,7 @@ function ECGVsAPSection({ rhythm }) {
         {/* LEFT — Intracellular (AP) trace */}
         <div className="flex-1 min-w-0 rounded-xl border border-gray-800 bg-gray-900/60 p-4">
           <h3 className="text-sm font-semibold text-white mb-1">Intracellular Recording</h3>
-          <p className="text-xs text-gray-500 mb-3">Voltage across ONE cell's membrane — requires a microelectrode inside the cell.</p>
+          <p className="text-xs text-gray-500 mb-3">Voltage inside a cell relative to the surrounding extracellular fluid. Move the yellow microelectrode to change the cell recording site.</p>
           <div className="flex items-baseline justify-between mb-1">
             <span className="text-xs font-semibold text-emerald-300">
               {region ? `${region.label} action potential` : 'No electrode placed'}
@@ -1897,10 +1897,10 @@ function ECGVsAPSection({ rhythm }) {
 
         {/* RIGHT — ECG trace */}
         <div className="flex-1 min-w-0 rounded-xl border border-gray-800 bg-gray-900/60 p-4">
-          <h3 className="text-sm font-semibold text-white mb-1">ECG Recording (Body Surface)</h3>
-          <p className="text-xs text-gray-500 mb-3">Voltage difference between body surface electrodes, produced by the heart’s electrical activity.</p>
+          <h3 className="text-sm font-semibold text-white mb-1">ECG Recording (Fixed Lead II)</h3>
+          <p className="text-xs text-gray-500 mb-3">Voltage difference between fixed body surface electrodes, produced by the heart’s electrical activity. These electrodes are separate from the yellow microelectrode and are not shown on the heart diagram.</p>
           <div className="flex items-baseline justify-between mb-1">
-            <span className="text-xs font-semibold text-blue-300">Lead II — surface trace</span>
+            <span className="text-xs font-semibold text-blue-300">Lead II — fixed surface electrodes</span>
             <span className="text-[10px] text-gray-500">Body Surface Voltage Difference (mV)</span>
           </div>
           <TraceCanvas
