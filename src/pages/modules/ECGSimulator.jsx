@@ -435,7 +435,7 @@ export default function ECGSimulator() {
     <ModulePage
       moduleId="ECG"
       number={4}
-      title="Building and changing the ECG"
+      title="ECG Simulator"
       description="Use the physiological parameter controls to explore how changes in each cardiac structure affect the ECG. The rhythm name appears only after you produce it — your quiz questions will guide what to investigate."
       wide
     >

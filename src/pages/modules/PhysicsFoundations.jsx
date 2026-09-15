@@ -1308,7 +1308,7 @@ export default function PhysicsFoundations() {
     <ModulePage
       moduleId="physics"
       number={2}
-      title="From electrical activity to a recorded voltage"
+      title="Electrical Fields"
     >
       {/* ── 2A ──────────────────────────────────────────────────────────────── */}
       {active === '2A' && (

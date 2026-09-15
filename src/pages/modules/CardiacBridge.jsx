@@ -2625,7 +2625,7 @@ export default function CardiacBridge() {
 export function RecordingsPage() {
   const rhythm = useMemo(() => buildRhythmFromParams(DEFAULT_RHYTHM_PARAMS), [])
   return (
-    <ModulePage number={1} title="What does an ECG measure?"
+    <ModulePage number={1} title="Introduction"
       description="Compare a recording across one cell’s membrane with a simultaneous body surface voltage difference. Pause or scrub through the cycle to investigate why the recordings look different.">
       <ECGVsAPSection rhythm={rhythm} />
     </ModulePage>
@@ -2636,7 +2636,7 @@ export function VectorCyclePage() {
   const rhythm = useMemo(() => buildRhythmFromParams(DEFAULT_RHYTHM_PARAMS), [])
   const axis = useMemo(() => meanQRSAxis(rhythm.waves), [rhythm])
   return (
-    <ModulePage title="The cardiac vector cycle"
+    <ModulePage title="Vector Cycle"
       description="Advanced exploration for a later activity. Follow the changing cardiac vector and its projections throughout P, QRS, and T.">
       <VectorCycle rhythm={rhythm} />
       <div className="rounded-xl border border-gray-800 bg-gray-900/60 p-4 mt-3">

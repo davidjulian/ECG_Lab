@@ -4,13 +4,13 @@ An ECG teaching app for PCB3713C at the University of Florida, adapted by David 
 
 ## Modules
 
-1. What does an ECG measure? — Jacob’s original 2C, AP versus ECG, using the repaired tissue wave animation.
-2. From electrical activity to a recorded voltage — charges, dipoles, projection, and propagating cellular activity (original 1A–1D).
-3. One heart, different leads — electrode placement and lead projections (original 1E).
-4. Building and changing the ECG — physiological simulator (original module 3).
-5. Patient investigations — symptom-based cases (original module 4).
+1. Introduction — Jacob’s original 2C, AP versus ECG, using the repaired tissue wave animation.
+2. Electrical Fields — charges, dipoles, projection, and propagating cellular activity (original 1A–1D).
+3. ECG Leads — electrode placement and lead projections (original 1E).
+4. ECG Simulator — physiological simulator (original module 3).
+5. Patient Cases — symptom-based cases (original module 4).
 
-Advanced: The cardiac vector cycle — original 2E, preserved for later activities outside the core tutorial sequence.
+Advanced: Vector Cycle — original 2E, preserved for later activities outside the core tutorial sequence.
 
 The app opens directly to Module 1. All modules are freely accessible without accounts or progress tracking. Older physics, ECG, and scenario bookmarks retain their destinations. Quiz feedback applies only to the open case.
 

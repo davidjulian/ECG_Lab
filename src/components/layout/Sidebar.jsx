@@ -9,11 +9,10 @@ export default function Sidebar() {
   return (
     <aside className="w-60 shrink-0 bg-gray-900 border-r border-gray-800 flex flex-col h-screen sticky top-0">
       <div className="px-4 py-4 border-b border-gray-800">
-        <div className="flex items-center gap-2 mb-3">
+        <div className="flex items-center gap-2">
           <svg viewBox="0 0 48 24" className="w-8 h-4" fill="none"><polyline points="0,12 8,12 12,4 16,20 20,2 24,22 28,12 48,12" stroke="#10b981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
           <span className="text-gray-300 text-xs font-medium">ECG Lab</span>
         </div>
-        <span className="text-xs" style={{ color: ACCENT }}>Free play</span>
       </div>
       <nav className="flex-1 overflow-y-auto px-2 py-3 space-y-0.5">
         {MODULES.map(info => {

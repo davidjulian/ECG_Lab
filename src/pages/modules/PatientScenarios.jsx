@@ -856,7 +856,7 @@ export default function PatientScenarios() {
     <ModulePage
       moduleId="scenarios"
       number={5}
-      title="Patient investigations"
+      title="Patient Cases"
       description="Each case below presents a patient whose ECG reveals a change in their conduction system physiology. For each case, identify the ECG rhythm, determine which physiological property changed, and explain why it produces the pattern you see."
     >
       <CaseSelector
