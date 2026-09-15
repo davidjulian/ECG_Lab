@@ -1483,9 +1483,10 @@ function TraceCanvas({ clockRef, valueAt, xDomain, yDomain, color, phaseMarkers,
 function ElectrodeIcon() {
   return (
     <svg width="39" height="63" viewBox="0 0 26 42" style={{ display: 'block' }}>
-      <rect x="15" y="0" width="9" height="9" rx="1.5" fill="#374151" stroke="#6b7280" />
-      <line x1="20" y1="2" x2="4" y2="34" stroke="#facc15" strokeWidth="3" strokeLinecap="round" />
-      <circle cx="4" cy="34" r="2.5" fill="#facc15" />
+      <rect x="16" y="0" width="9" height="8" rx="1.5" fill="#374151" stroke="#9ca3af" />
+      <path d="M 17 6 L 23 9 L 13 24 L 4 34 L 8 21 Z"
+        fill="#fef3c7" fillOpacity="0.6" stroke="#facc15" strokeWidth="1.2" strokeLinejoin="miter" />
+      <path d="M 20 7 L 10 24 L 4 34" fill="none" stroke="#fde047" strokeWidth="0.8" />
     </svg>
   )
 }
