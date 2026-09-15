@@ -1854,7 +1854,7 @@ function ECGVsAPSection({ rhythm }) {
       {/* TOP — the heart itself: drag the electrode here */}
       <div className="rounded-xl border border-gray-800 bg-gray-900/60 p-4 flex flex-col items-center">
         <p className="text-xs text-gray-500 mb-3 text-center max-w-md">
-          The yellow icon represents an intracellular microelectrode. Drag its tip to a heart region to view a cell’s action potential there. The ECG uses a separate, fixed pair of body surface electrodes and stays the same when you move this microelectrode.
+          The yellow tip represents a microelectrode inside a cell. Its voltage is measured relative to a reference electrode in the surrounding extracellular fluid, omitted from this diagram. Drag the tip to choose a cell recording site. The ECG uses a separate, fixed pair of body surface electrodes and stays the same when you move this microelectrode.
         </p>
         <HeartDropTarget
           clockRef={clockRef}
@@ -1869,7 +1869,7 @@ function ECGVsAPSection({ rhythm }) {
         {/* LEFT — Intracellular (AP) trace */}
         <div className="flex-1 min-w-0 rounded-xl border border-gray-800 bg-gray-900/60 p-4">
           <h3 className="text-sm font-semibold text-white mb-1">Intracellular Recording</h3>
-          <p className="text-xs text-gray-500 mb-3">Voltage inside a cell relative to the surrounding extracellular fluid. Move the yellow microelectrode to change the cell recording site.</p>
+          <p className="text-xs text-gray-500 mb-3">Membrane potential = voltage inside the cell − voltage at the extracellular reference electrode (not shown).</p>
           <div className="flex items-baseline justify-between mb-1">
             <span className="text-xs font-semibold text-emerald-300">
               {region ? `${region.label} action potential` : 'No electrode placed'}
