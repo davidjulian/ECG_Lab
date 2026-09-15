@@ -17,7 +17,7 @@ export default function ModulePage({ number, title, objective, description, wide
               border:          `1px solid ${accent}35`,
             }}
           >
-            Module {number}
+            {number ? `Module ${number}` : 'Advanced'}
           </span>
 
           <h1 className="text-lg font-bold text-white">{title}</h1>

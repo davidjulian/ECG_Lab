@@ -4,11 +4,15 @@ An ECG teaching app for PCB3713C at the University of Florida, adapted by David 
 
 ## Modules
 
-1. Physics foundations (original module 1)
-2. ECG simulator and rhythms (original module 3)
-3. Patient scenarios (original module 4)
+1. What does an ECG measure? — Jacob’s original 2C, AP versus ECG, using the repaired tissue wave animation.
+2. From electrical activity to a recorded voltage — charges, dipoles, projection, and propagating cellular activity (original 1A–1D).
+3. One heart, different leads — electrode placement and lead projections (original 1E).
+4. Building and changing the ECG — physiological simulator (original module 3).
+5. Patient investigations — symptom-based cases (original module 4).
 
-The app opens directly in free play with all three modules accessible. There is no mode selection screen. Older lab module links redirect to their free play equivalents. No accounts, usernames, saved scores, completion tracking, or browser storage are used. Quiz feedback is shown only for the currently open case and resets when the case is left.
+Advanced: The cardiac vector cycle — original 2E, preserved for later activities outside the core tutorial sequence.
+
+The app opens directly to Module 1. All modules are freely accessible without accounts or progress tracking. Older physics, ECG, and scenario bookmarks retain their destinations. Quiz feedback applies only to the open case.
 
 ## Development
 
@@ -35,11 +39,11 @@ Source revision: `22a2932c9e87e8dfa80c8a342fcf805b6427ebb8` (Module 1E UI change
 
 ECG Lab repository: https://github.com/davidjulian/ECG_lab
 
-The original Git history is retained. Original module 2 and development components remain in source for provenance, but are excluded from this app’s routes and navigation. Simulation and case content are inherited from the source app; this initial adaptation does not constitute a scientific review of that content.
+The original Git history is retained. Original sections 2C and 2E are integrated into the new sequence. Remaining original module 2 and development components stay outside the app navigation. Simulation and case content are inherited from the source app; this initial adaptation does not constitute a scientific review of that content.
 
 ## Schematic myocardial waves
 
-Module 2 preserves Jacob’s heart artwork and draws a masked tissue state layer within its existing chamber shapes. A yellow activation front leaves coral depolarized tissue behind; a cyan recovery front returns the region to its original resting color. Conduction pathways retain the original animation. Violet fronts identify ectopic or fusion activation.
+Modules 1 and 4 preserve Jacob’s heart artwork and draws a masked tissue state layer within its existing chamber shapes. A yellow activation front leaves coral depolarized tissue behind; a cyan recovery front returns the region to its original resting color. Conduction pathways retain the original animation. Violet fronts identify ectopic or fusion activation.
 
 Atrial activation spreads from approximate SA and interatrial entry regions. Ventricular activation uses a curved apical-to-basal timing field, and recovery uses a separate basal-to-apical field, following the regional teaching approximation used in the Cardiac Action Potentials app. These filled chamber regions are schematic, not resolved myocardial walls, and do not model septal or transmural propagation. The spatial recovery pattern is not a universal human recovery map or a reconstruction from the ECG. It does not calculate the displayed lead voltage.
 

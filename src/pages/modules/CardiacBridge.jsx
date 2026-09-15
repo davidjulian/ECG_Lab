@@ -1,4 +1,4 @@
-﻿import { useEffect, useRef, useState, useMemo, useCallback } from 'react'
+import { useEffect, useRef, useState, useMemo, useCallback } from 'react'
 import p5 from 'p5'
 import ModulePage from '../../components/ModulePage'
 import HeartAnimation, { buildConductionMap } from '../../components/HeartAnimation'
@@ -234,17 +234,8 @@ const ATRIAL_PHASES = [
 // not by coincidence — see ECGVsAPSection's "Zoom to QRS" feature below.
 const QRS_ONSET_MS = DEFAULT_RHYTHM_PARAMS.prInterval
 
-// HeartAnimation's ventricular chamber-fill animation (rhythmId
-// "normalSinusVoltage") deliberately lags the true Q/R/S timing by this
-// much — it waits for the His-bundle sweep to visually finish first before
-// the chambers start filling (see buildConductionMap's normalSinusVoltage
-// case: ventDelay = hisBottomMs - qOnMs + 20, a constant 40ms for this
-// preset's fixed His-entry duration). That's a fine cosmetic choice for the
-// animation on its own — and 2D's Conduction Animation still uses it
-// unmodified — but here the AP graph and ECG trace are shifted to match it
-// instead, so what the animation visually shows and what these graphs show
-// agree on the same instant, rather than the graphs "leading" the animation.
-const VENTRICULAR_ANIM_DELAY_MS = 40
+// The repaired tissue renderer uses the ECG timeline without a cosmetic delay.
+const VENTRICULAR_ANIM_DELAY_MS = 0
 
 const AP_REGIONS = [
   { key: 'sa', label: 'SA Node', data: SA_AP, phases: SA_PHASES, anchorFraction: 0.68, targetMs: 0,
@@ -1747,8 +1738,8 @@ function HeartDropTarget({ clockRef, rhythm, selectedRegion, onSelect }) {
 
   return (
     <div className="relative rounded-xl border border-gray-800 bg-gray-900/60 p-3 flex flex-col items-center">
-      <div ref={stageRef} className="relative" style={{ width: W, height: H }}>
-        <HeartAnimation clockRef={clockRef} rhythmId="normalSinusVoltage" rhythm={rhythm} width={W} height={H} />
+      <div ref={stageRef} className="relative" style={{ width: W, minHeight: H + 125 }}>
+        <HeartAnimation tissueWaves clockRef={clockRef} rhythmId="normalSinus" rhythm={rhythm} width={W} height={H} />
 
         {/* SA/AV: a small circular hit-zone, drawn since there's no other
             visible affordance for these tiny shapes. Atrium/Ventricle/
@@ -1817,28 +1808,14 @@ function ECGVsAPSection({ rhythm }) {
   // be a second, independent source of desync against the animation on top
   // of the one below.
   //
-  // The QRS complex (Q/R/S — the ventricular portion) is shifted later by
-  // VENTRICULAR_ANIM_DELAY_MS so it lines up with HeartAnimation's own
-  // delayed ventricular fill (see that constant's comment) — same idea as
-  // the ventricle AP anchor above. P and T stay at their true time: the
-  // animation's atrial flash and repolarization sweep aren't delayed the
-  // same way, so shifting them would just trade one desync for another.
-  const shiftedWaves = useMemo(() => (
-    (rhythm.waves || []).map(w => (
-      (w.name === 'Q' || w.name === 'R' || w.name === 'S')
-        ? { ...w, center: w.center + VENTRICULAR_ANIM_DELAY_MS }
-        : w
-    ))
-  ), [rhythm.waves])
+  const shiftedWaves = rhythm.waves || []
 
   const ecgValueAt = useCallback((t) => {
     if (shiftedWaves.length === 0) return 0
     return cycleVoltage(t, shiftedWaves, 60)
   }, [shiftedWaves])
 
-  // Both use the SHIFTED position (matching shiftedWaves/the ventricle AP
-  // anchor above), so "Zoom to QRS" centers on where the R wave actually
-  // appears on this trace, not its pre-shift value.
+  // Zoom uses the same ECG timing as the shared animation clock.
   const rWave = useMemo(() => shiftedWaves.find(w => w.name === 'R'), [shiftedWaves])
   const rWaveCenter = rWave ? rWave.center : QRS_ONSET_MS + VENTRICULAR_ANIM_DELAY_MS + 38
 
@@ -1910,7 +1887,7 @@ function ECGVsAPSection({ rhythm }) {
         {/* RIGHT — ECG trace */}
         <div className="flex-1 min-w-0 rounded-xl border border-gray-800 bg-gray-900/60 p-4">
           <h3 className="text-sm font-semibold text-white mb-1">ECG Recording (Body Surface)</h3>
-          <p className="text-xs text-gray-500 mb-3">Net dipole moment of the entire heart, viewed from outside the body.</p>
+          <p className="text-xs text-gray-500 mb-3">Voltage difference between body surface electrodes, produced by the heart’s electrical activity.</p>
           <div className="flex items-baseline justify-between mb-1">
             <span className="text-xs font-semibold text-blue-300">Lead II — surface trace</span>
             <span className="text-[10px] text-gray-500">Body Surface Voltage Difference (mV)</span>
@@ -1923,7 +1900,7 @@ function ECGVsAPSection({ rhythm }) {
             color="#60a5fa"
           />
           <p className="text-[11px] text-gray-500 mt-1.5 leading-relaxed">
-            Left: voltage across one cell membrane (intracellular electrode required). Right: net dipole moment of the entire heart, summed across billions of cells, viewed from outside the body.
+            Left: voltage across one cell membrane (intracellular electrode required). Right: voltage difference between body surface electrodes. An equivalent cardiac dipole helps explain this measurement.
           </p>
         </div>
       </div>
@@ -1966,8 +1943,7 @@ function ECGVsAPSection({ rhythm }) {
       {/* Misconception callout */}
       <div className="mt-4 rounded-lg bg-amber-950/30 border border-amber-700/40 px-4 py-3 text-xs text-amber-200 leading-relaxed">
         <strong>⚠ Common Misconception:</strong> The ECG does not show membrane potential. The upstroke of the R wave
-        does not correspond to the upstroke of the action potential. The ECG captures the spatial derivative of the
-        extracellular potential — the dipole field — summed across billions of cells. No single cell's membrane
+        is not a recording of a single cell’s action potential upstroke. The ECG measures a difference in extracellular potential between electrode locations. No single cell's membrane
         potential can be read from an ECG. An intracellular microelectrode is required for that measurement.
       </div>
     </div>
@@ -2437,14 +2413,14 @@ function VectorCycle({ rhythm }) {
           p.noFill()
           p.beginShape()
           const f0 = ECGCache[0]
-          p.curveVertex(EX, EY + EH / 2 - (f0 / maxV) * (EH / 2 - 8))
+          p.vertex(EX, EY + EH / 2 - (f0 / maxV) * (EH / 2 - 8))
           ECGCache.forEach((v, i) => {
             const px = EX + (i / ECGCache.length) * EW
             const py = EY + EH / 2 - (v / maxV) * (EH / 2 - 8)
-            p.curveVertex(px, py)
+            p.vertex(px, py)
           })
           const fn = ECGCache[ECGCache.length - 1]
-          p.curveVertex(EX + EW, EY + EH / 2 - (fn / maxV) * (EH / 2 - 8))
+          p.vertex(EX + EW, EY + EH / 2 - (fn / maxV) * (EH / 2 - 8))
           p.endShape()
         }
 
@@ -2594,7 +2570,7 @@ export default function CardiacBridge() {
         <Section
           label="2C"
           title="What Does the ECG Actually Record?"
-          subtitle="An intracellular electrode measures voltage across one cell's membrane. The ECG measures the net dipole moment of the entire heart from the body surface. Drag the electrode into a region to compare its action potential with the simultaneous ECG trace."
+          subtitle="An intracellular electrode measures voltage across one cell's membrane. The ECG measures voltage differences between body surface electrodes. Drag the electrode into a region to compare its action potential with the simultaneous ECG trace."
         >
           <ECGVsAPSection rhythm={rhythm} />
         </Section>
@@ -2640,6 +2616,32 @@ export default function CardiacBridge() {
           </Callout>
         </Section>
       )}
+    </ModulePage>
+  )
+}
+
+
+// Adapted from Jacob Walker’s original sections 2C and 2E.
+export function RecordingsPage() {
+  const rhythm = useMemo(() => buildRhythmFromParams(DEFAULT_RHYTHM_PARAMS), [])
+  return (
+    <ModulePage number={1} title="What does an ECG measure?"
+      description="Compare a recording across one cell’s membrane with a simultaneous body surface voltage difference. Pause or scrub through the cycle to investigate why the recordings look different.">
+      <ECGVsAPSection rhythm={rhythm} />
+    </ModulePage>
+  )
+}
+
+export function VectorCyclePage() {
+  const rhythm = useMemo(() => buildRhythmFromParams(DEFAULT_RHYTHM_PARAMS), [])
+  const axis = useMemo(() => meanQRSAxis(rhythm.waves), [rhythm])
+  return (
+    <ModulePage title="The cardiac vector cycle"
+      description="Advanced exploration for a later activity. Follow the changing cardiac vector and its projections throughout P, QRS, and T.">
+      <VectorCycle rhythm={rhythm} />
+      <div className="rounded-xl border border-gray-800 bg-gray-900/60 p-4 mt-3">
+        <AxisSummaryPanel angleDeg={axis.angleDeg} leadIMm={axis.leadIMm} leadAVFMm={axis.leadAVFMm} />
+      </div>
     </ModulePage>
   )
 }

@@ -1,15 +1,14 @@
 ﻿import { useEffect, useRef, useState } from 'react'
 import p5 from 'p5'
 import ModulePage from '../../components/ModulePage'
-import LeadPlacementLab from '../../components/LeadPlacementLab'
+import { useNavigate } from 'react-router-dom'
 import { useTabState, usePublishTabs } from '../../components/ModuleTabs'
 
 const TABS = [
-  { id: '1A', label: '1A · Charges' },
-  { id: '1B', label: '1B · Dipole' },
-  { id: '1C', label: '1C · Dot Product' },
-  { id: '1D', label: '1D · Depolarization' },
-  { id: '1E', label: '1E · Lead Placement' },
+  { id: '2A', label: '2A · Charges' },
+  { id: '2B', label: '2B · Dipole' },
+  { id: '2C', label: '2C · Dot Product' },
+  { id: '2D', label: '2D · Depolarization' },
 ]
 
 // ── Layout helpers ────────────────────────────────────────────────────────────
@@ -91,8 +90,8 @@ function SimBar({ children }) {
   )
 }
 
-// ── 1A: Point charges, field lines, equipotentials ───────────────────────────
-function Sim1A() {
+// ── 2A: Point charges, field lines, equipotentials ───────────────────────────
+function Sim2A() {
   const containerRef = useRef()
   const showEqRef = useRef(false)
   const [showEq, setShowEq] = useState(false)
@@ -433,13 +432,13 @@ function Sim1A() {
   )
 }
 
-// ── 1B: Dipole rotation, test-point voltage ───────────────────────────────────
-function Sim1B() {
+// ── 2B: Dipole rotation, test-point voltage ───────────────────────────────────
+function Sim2B() {
   const containerRef = useRef()
 
   useEffect(() => {
     // Scaled ~0.78x from the original 720×420 (same uniform-factor rule as
-    // Sim1A — see its comment).
+    // Sim2A — see its comment).
     const W = 560, H = 327, K = 38889, SEP = 84
     let cancelled = false
 
@@ -574,16 +573,16 @@ function Sim1B() {
   )
 }
 
-// ── 1D: A row of cells depolarizing/repolarizing generates a dipole ───────────
+// ── 2D: A row of cells depolarizing/repolarizing generates a dipole ───────────
 function PlayIcon()  { return <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg> }
 function PauseIcon() { return <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M7 5h4v14H7zm6 0h4v14h-4z"/></svg> }
 const CELL_SPEEDS = [0.25, 0.5, 1, 1.5, 2]
-// Mirrors the timing constants inside Sim1DCells's p5 sketch (STEP_DELAY=90,
+// Mirrors the timing constants inside Sim2DCells's p5 sketch (STEP_DELAY=90,
 // TRANS_DUR=60, APD=260, REST_PAUSE=500, N=10) — kept in sync manually since
 // the scrub input's `max` is needed outside the sketch closure.
 const CELLS_TOTAL_CYCLE_MS = 9 * 90 + 2 * 60 + 260 + 500
 
-function Sim1DCells() {
+function Sim2DCells() {
   const containerRef = useRef()
 
   const [playing, setPlaying] = useState(true)
@@ -613,7 +612,7 @@ function Sim1DCells() {
 
   useEffect(() => {
     // Scaled ~0.78x from the original 720×480 (same uniform-factor rule as
-    // Sim1A — see its comment).
+    // Sim2A — see its comment).
     const W = 560, H = 375, K = 29556
     const N = 10
     const QMAX = 1
@@ -1130,13 +1129,13 @@ function Sim1DCells() {
   )
 }
 
-// ── 1D: Draggable vectors, dot product, projection ───────────────────────────
-function Sim1D() {
+// ── 2D: Draggable vectors, dot product, projection ───────────────────────────
+function Sim2D() {
   const containerRef = useRef()
 
   useEffect(() => {
     // Scaled ~0.78x from the original 720×450 (same uniform-factor rule as
-    // Sim1A — see its comment).
+    // Sim2A — see its comment).
     const W = 560, H = 350
     const OX = W / 2, OY = H / 2
     let cancelled = false
@@ -1299,6 +1298,7 @@ function Sim1D() {
 
 // ── Page ─────────────────────────────────────────────────────────────────────
 export default function PhysicsFoundations() {
+  const navigate = useNavigate()
   const { active, setActive } = useTabState(TABS.map(t => t.id))
   // Tabs now render as a sub-menu in the sidebar (see Sidebar.jsx) instead
   // of an in-page pill bar — this just publishes the same state there.
@@ -1307,12 +1307,12 @@ export default function PhysicsFoundations() {
   return (
     <ModulePage
       moduleId="physics"
-      number={1}
-      title="Physics foundations"
+      number={2}
+      title="From electrical activity to a recorded voltage"
     >
-      {/* ── 1A ──────────────────────────────────────────────────────────────── */}
-      {active === '1A' && (
-        <Section label="1A" title="Point charges create an electric field and potential">
+      {/* ── 2A ──────────────────────────────────────────────────────────────── */}
+      {active === '2A' && (
+        <Section label="2A" title="Point charges create an electric field and potential">
           <p className="text-xs text-gray-400 leading-snug mb-2">
             Add charges to the canvas. The colored background is the electric potential V at every
             point — blue = positive, amber = negative. White lines are field lines: they leave +
@@ -1320,7 +1320,7 @@ export default function PhysicsFoundations() {
             Toggle equipotentials to see the iso-V contours that run perpendicular to field lines.
           </p>
 
-          <Sim1A />
+          <Sim2A />
 
           <Callout>
             <strong className="text-white">Insight:</strong> When cardiac muscle depolarizes, positive
@@ -1329,13 +1329,13 @@ export default function PhysicsFoundations() {
             The net effect at electrode distance approximates a single equivalent dipole.
           </Callout>
 
-          <ForwardLink onNext={() => setActive('1B')}>continues in 1B — the dipole model</ForwardLink>
+          <ForwardLink onNext={() => setActive('2B')}>continues in 2B — the dipole model</ForwardLink>
         </Section>
       )}
 
-      {/* ── 1B ──────────────────────────────────────────────────────────────── */}
-      {active === '1B' && (
-        <Section label="1B" title="A dipole: the simplest model of the heart's field">
+      {/* ── 2B ──────────────────────────────────────────────────────────────── */}
+      {active === '2B' && (
+        <Section label="2B" title="A dipole: the simplest model of the heart's field">
           <p className="text-xs text-gray-400 leading-snug mb-2">
             A dipole is a locked +/− pair with a fixed separation. Rotate it by dragging the center.
             Move the green probe to any point and read the voltage there. Notice that V depends on both
@@ -1346,7 +1346,7 @@ export default function PhysicsFoundations() {
             {'V(r, θ) ≈ (kp cos θ) / r²'}
           </Equation>
 
-          <Sim1B />
+          <Sim2B />
 
           <Callout>
             <strong className="text-white">Insight:</strong> At distances large compared to the
@@ -1356,13 +1356,13 @@ export default function PhysicsFoundations() {
             dipole model works.
           </Callout>
 
-          <ForwardLink onNext={() => setActive('1C')}>continues in 1C — the dot product projects the dipole onto a measurement axis</ForwardLink>
+          <ForwardLink onNext={() => setActive('2C')}>continues in 2C — the dot product projects the dipole onto a measurement axis</ForwardLink>
         </Section>
       )}
 
-      {/* ── 1C ──────────────────────────────────────────────────────────────── */}
-      {active === '1C' && (
-        <Section label="1C" title="The dot product: what every lead does to the cardiac vector">
+      {/* ── 2C ──────────────────────────────────────────────────────────────── */}
+      {active === '2C' && (
+        <Section label="2C" title="The dot product: what every lead does to the cardiac vector">
           <p className="text-xs text-gray-400 leading-snug mb-2">
             Vector <strong className="text-blue-400">A</strong> is the cardiac dipole at one instant.
             Vector <strong className="text-amber-400">B</strong> is the lead axis (the direction from −
@@ -1375,7 +1375,7 @@ export default function PhysicsFoundations() {
             {'V_lead = A · B = |A| |B| cos θ'}
           </Equation>
 
-          <Sim1D />
+          <Sim2D />
 
           <div className="grid grid-cols-3 gap-3 text-sm mb-3">
             {[
@@ -1399,16 +1399,16 @@ export default function PhysicsFoundations() {
             cardiac axis see tall complexes; leads perpendicular to it see flat lines.
           </Callout>
 
-          <ForwardLink onNext={() => setActive('1D')}>continues in 1D — how a depolarizing cell actually generates that dipole</ForwardLink>
+          <ForwardLink onNext={() => setActive('2D')}>continues in 2D — how a depolarizing cell actually generates that dipole</ForwardLink>
         </Section>
       )}
 
-      {/* ── 1D ──────────────────────────────────────────────────────────────── */}
-      {active === '1D' && (
-        <Section label="1D" title="Depolarization and repolarization of a cell generate a dipole">
+      {/* ── 2D ──────────────────────────────────────────────────────────────── */}
+      {active === '2D' && (
+        <Section label="2D" title="Depolarization and repolarization of a cell generate a dipole">
           <p className="text-xs text-gray-500 leading-snug mb-2 italic">
             If you'd like to explore the physics of electric fields interactively before continuing,
-            Section 1A covers point charges. Otherwise you're in the right place.
+            Section 2A covers point charges. Otherwise you're in the right place.
           </p>
           <p className="text-xs text-gray-400 leading-snug mb-2">
             Ten cells sit side by side, each polarized (+ outside) at rest. Press play: a wave of
@@ -1425,37 +1425,23 @@ export default function PhysicsFoundations() {
             lines, equipotentials, or current lines to see the field itself.
           </p>
 
-          <Sim1DCells />
+          <Sim2DCells />
 
           <Callout>
             <strong className="text-white">Insight:</strong> The strip-chart traces the electrodes'
             own ΔV(t) — it rises, peaks, and falls as the wave crosses the row, the same shape as a
             real QRS complex. Notice the reading <em>reverses sign</em> during repolarization: the
             same left→right activation order now sweeps recovery instead of depolarization, so which
-            side reads more positive flips. This is exactly the dipole from 1A/1B — here you're
+            side reads more positive flips. This is exactly the dipole from 2A/2B — here you're
             watching it being generated cell by cell instead of assuming it, and the probes show
             that it's also directly measurable as a plain voltage difference (including going to
-            exactly zero when they're placed perpendicular to the row), just like 1E's electrodes.
+            exactly zero when they're placed perpendicular to the row), just like the electrodes in Module 3.
           </Callout>
 
-          <ForwardLink onNext={() => setActive('1E')}>continues in 1E — place real electrodes on a body and see the projection live</ForwardLink>
+          <ForwardLink onNext={() => navigate('/play/leads')}>continue to Module 3 — place electrodes and compare leads</ForwardLink>
         </Section>
       )}
 
-      {/* ── 1E: Interactive Lead Placement Lab — the payoff ──────────────── */}
-      {active === '1E' && (
-        <Section label="1E" title="Interactive: place electrodes and see the projection in real time">
-          <Callout accent="#818cf8">
-            <strong className="text-white">This is the conceptual payoff of sections 1A–1D.</strong>{' '}
-            Drag the electrodes anywhere on the body. Watch the ECG strip respond to the dot product
-            between the rotating cardiac dipole and your lead axis. Try placing your lead parallel to
-            Lead II — you'll get the biggest QRS. Rotate 90° — the line goes flat. The physics is
-            identical to projecting vector A onto vector B in section 1D.
-          </Callout>
-
-          <LeadPlacementLab />
-        </Section>
-      )}
     </ModulePage>
   )
 }
