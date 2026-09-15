@@ -1746,9 +1746,26 @@ function HeartDropTarget({ clockRef, rhythm, selectedRegion, onSelect }) {
   }, [dragging, onSelect, regionAt])
 
   return (
-    <div className="relative rounded-xl border border-gray-800 bg-gray-900/60 p-3 flex flex-col items-center">
-      <div ref={stageRef} className="relative" style={{ width: W, minHeight: H + 125 }}>
-        <HeartAnimation tissueWaves clockRef={clockRef} rhythmId="normalSinus" rhythm={rhythm} width={W} height={H} />
+    <div className="relative rounded-xl border border-gray-800 bg-gray-900/60 p-3 flex flex-col items-center w-full max-w-xl">
+      <div ref={stageRef} className="relative" style={{ width: '100%', maxWidth: 520, minHeight: H + 125 }}>
+        <div className="mx-auto" style={{ width: W }}>
+          <HeartAnimation tissueWaves clockRef={clockRef} rhythmId="normalSinus" rhythm={rhythm} width={W} height={H} />
+        </div>
+        {[
+          { side: 'left', top: 110, label: 'Right arm', polarity: '−' },
+          { side: 'right', top: 345, label: 'Left leg', polarity: '+' },
+        ].map(({ side, top, label, polarity }) => (
+          <div key={side} className="absolute flex flex-col items-center text-blue-300 text-[11px] leading-snug pointer-events-none"
+            style={{ [side]: 0, top }} aria-label={`Fixed Lead II skin electrode: ${label}, ${polarity === '+' ? 'positive' : 'negative'}`}>
+            <svg width="38" height="38" viewBox="0 0 38 38" aria-hidden="true">
+              <circle cx="19" cy="19" r="17" fill="#172554" stroke="#60a5fa" strokeWidth="2" />
+              <circle cx="19" cy="19" r="11" fill="#1e40af" />
+              <text x="19" y="25" textAnchor="middle" fill="white" fontSize="21">{polarity}</text>
+            </svg>
+            <span className="font-semibold">{label} ({polarity})</span>
+            <span>Fixed skin electrode</span>
+          </div>
+        ))}
 
         {/* SA/AV: a small circular hit-zone, drawn since there's no other
             visible affordance for these tiny shapes. Atrium/Ventricle/
@@ -1794,6 +1811,7 @@ function HeartDropTarget({ clockRef, rhythm, selectedRegion, onSelect }) {
       <p className="text-[11px] text-gray-500 mt-2">
         {selectedRegion ? <>Intracellular recording site: <span className="text-cyan-300">{AP_REGIONS.find(r => r.key === selectedRegion)?.label}</span></> : 'Drag the intracellular microelectrode onto the heart'}
       </p>
+      <p className="text-[11px] text-blue-300 mt-2 text-center">Blue pads: Lead II surface electrodes. Positions are schematic.</p>
     </div>
   )
 }
@@ -1854,7 +1872,7 @@ function ECGVsAPSection({ rhythm }) {
       {/* TOP — the heart itself: drag the electrode here */}
       <div className="rounded-xl border border-gray-800 bg-gray-900/60 p-4 flex flex-col items-center">
         <p className="text-xs text-gray-500 mb-3 text-center max-w-md">
-          The yellow tip represents a microelectrode inside a cell. Its voltage is measured relative to a reference electrode in the surrounding extracellular fluid, omitted from this diagram. Drag the tip to choose a cell recording site. The ECG uses a separate, fixed pair of body surface electrodes and stays the same when you move this microelectrode.
+          Drag the yellow intracellular microelectrode to choose a cell recording site. Its extracellular reference electrode is not shown. The blue skin electrodes stay fixed and record Lead II: left leg (+) minus right arm (−). Moving the yellow tip changes the intracellular recording, while the ECG continues to show the same heartbeat.
         </p>
         <HeartDropTarget
           clockRef={clockRef}
@@ -1898,7 +1916,7 @@ function ECGVsAPSection({ rhythm }) {
         {/* RIGHT — ECG trace */}
         <div className="flex-1 min-w-0 rounded-xl border border-gray-800 bg-gray-900/60 p-4">
           <h3 className="text-sm font-semibold text-white mb-1">ECG Recording (Fixed Lead II)</h3>
-          <p className="text-xs text-gray-500 mb-3">Voltage difference between fixed body surface electrodes, produced by the heart’s electrical activity. These electrodes are separate from the yellow microelectrode and are not shown on the heart diagram.</p>
+          <p className="text-xs text-gray-500 mb-3">Voltage at the blue left leg (+) electrode minus voltage at the blue right arm (−) electrode. Both are on the skin, separate from the intracellular recording electrodes.</p>
           <div className="flex items-baseline justify-between mb-1">
             <span className="text-xs font-semibold text-blue-300">Lead II — fixed surface electrodes</span>
             <span className="text-[10px] text-gray-500">Body Surface Voltage Difference (mV)</span>
