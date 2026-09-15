@@ -1482,7 +1482,7 @@ function TraceCanvas({ clockRef, valueAt, xDomain, yDomain, color, phaseMarkers,
 
 function ElectrodeIcon() {
   return (
-    <svg width="24" height="38" viewBox="0 0 26 42" style={{ display: 'block' }}>
+    <svg width="39" height="63" viewBox="0 0 26 42" style={{ display: 'block' }}>
       <rect x="15" y="0" width="9" height="9" rx="1.5" fill="#374151" stroke="#6b7280" />
       <line x1="20" y1="2" x2="4" y2="34" stroke="#facc15" strokeWidth="3" strokeLinecap="round" />
       <circle cx="4" cy="34" r="2.5" fill="#facc15" />
@@ -1622,6 +1622,15 @@ function HeartDropTarget({ clockRef, rhythm, selectedRegion, onSelect }) {
       }
 
       setRegionShapes({ sa, av, atrium, ventricle, purkinje })
+      // Start the probe on the chamber supplying the default recording.
+      // Measure the artwork so the position includes its SVG transforms.
+      const chamber = groups.ventricle[0]
+      if (chamber) {
+        setDragPos(current => current ?? {
+          x: (chamber.left + chamber.right) / 2,
+          y: (chamber.top + chamber.bottom) / 2,
+        })
+      }
     })
     return () => cancelAnimationFrame(id)
   }, [])
@@ -1769,8 +1778,10 @@ function HeartDropTarget({ clockRef, rhythm, selectedRegion, onSelect }) {
           onPointerDown={handlePointerDown}
           className="absolute cursor-grab active:cursor-grabbing select-none"
           style={{
-            left: dragPos ? dragPos.x - 12 : 2,
-            top: dragPos ? dragPos.y - 12 : 2,
+            // Anchor the yellow recording tip (4, 34 in the SVG), not its box.
+            left: dragPos ? dragPos.x - 6 : 0,
+            top: dragPos ? dragPos.y - 51 : 0,
+            visibility: dragPos ? 'visible' : 'hidden',
             touchAction: 'none',
             zIndex: 20,
             pointerEvents: dragging ? 'none' : 'auto',
