@@ -83,12 +83,32 @@ function drawConnections(ctx, augmented) {
   const sites={RA:{x:28,y:95},LA:{x:143.2,y:95},LL:{x:124,y:197.6}}
   ctx.save();ctx.textAlign='center';ctx.font='10px sans-serif';ctx.fillStyle='#94a3b8'
   ctx.fillText('Electrode connections',86,24)
+  if (augmented) {
+    // Keep the placement outline faint, then show the selected derived lead.
+    ctx.strokeStyle='#334155';ctx.lineWidth=1
+    ctx.beginPath();ctx.moveTo(sites.RA.x,sites.RA.y);ctx.lineTo(sites.LA.x,sites.LA.y);ctx.lineTo(sites.LL.x,sites.LL.y);ctx.closePath();ctx.stroke()
+    const [a,b]=augmented.reference.map(id=>sites[id])
+    const reference={x:(a.x+b.x)/2,y:(a.y+b.y)/2}
+    const positive=sites[augmented.positive]
+    ctx.strokeStyle='#fbbf24';ctx.setLineDash([4,3]);ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();ctx.setLineDash([])
+    drawArrow(ctx,reference.x,reference.y,positive.x,positive.y,'#60a5fa',2,false)
+    // A hollow diamond marks a calculated reference, not an electrode.
+    ctx.fillStyle='#030712';ctx.strokeStyle='#fbbf24';ctx.beginPath()
+    ctx.moveTo(reference.x,reference.y-5);ctx.lineTo(reference.x+5,reference.y);ctx.lineTo(reference.x,reference.y+5);ctx.lineTo(reference.x-5,reference.y);ctx.closePath();ctx.fill();ctx.stroke()
+    ctx.fillStyle='#60a5fa';ctx.font='bold 11px sans-serif'
+    const name=Object.keys(AUGMENTED).find(key=>AUGMENTED[key]===augmented)
+    ctx.fillText(`Lead ${name}`,86,55)
+    ctx.font='10px sans-serif';ctx.fillStyle='#fbbf24'
+    ctx.fillText('◇ Average reference',86,244)
+    ctx.fillText(`(${augmented.reference.join(' + ')}) / 2`,86,260)
+  } else {
   EIN_LEADS.forEach(({a,b,label,color})=>{
     ctx.strokeStyle=color;ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(sites[a].x,sites[a].y);ctx.lineTo(sites[b].x,sites[b].y);ctx.stroke()
     ctx.fillStyle=color;ctx.textAlign = label === 'II' ? 'right' : label === 'III' ? 'left' : 'center'
     ctx.fillText(`Lead ${label}`,(sites[a].x+sites[b].x)/2+(label==='II'?-15:label==='III'?7:0),(sites[a].y+sites[b].y)/2-8)
     ctx.textAlign = 'center'
   })
+  }
   Object.entries(sites).forEach(([id,p])=>{
     ctx.fillStyle=augmented?(id===augmented.positive?'#60a5fa':'#fbbf24'):'#94a3b8'
     ctx.beginPath();ctx.arc(p.x,p.y,4,0,Math.PI*2);ctx.fill();ctx.fillText(id,p.x,p.y+(id==='LL'?18:-14))
