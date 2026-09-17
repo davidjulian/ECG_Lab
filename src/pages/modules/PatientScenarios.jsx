@@ -794,7 +794,7 @@ function ScenarioCard({ caseData }) {
         <p className="text-xs text-gray-600 mt-1">25 mm/s · 1 cm/mV standard calibration</p>
       </div>
 
-      <Explanation title={caseData.hints.length ? "Case questions and hints" : "Case questions"} resetKey={caseData.id}>
+      <Explanation optional={false} title={caseData.hints.length ? "Case questions and hints" : "Case questions"} resetKey={caseData.id}>
       {caseData.scaffolded && !submitted && (
         <HintSequence hints={caseData.hints} />
       )}
