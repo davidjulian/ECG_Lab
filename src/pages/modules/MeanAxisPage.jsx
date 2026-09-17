@@ -82,7 +82,7 @@ export default function MeanAxisPage() {
           {reveal && <p className="mt-2 text-xs text-yellow-300">Yellow: full QRS mean · {angleText(mean.angle)}<br />Dashed amber: contributions accumulated so far.</p>}
         </div>
         <div>
-          <h2 className="text-sm font-semibold text-gray-100">Six views of the same QRS interval</h2>
+          <h2 className="text-sm font-semibold text-gray-100">Six views of the same QRS complex</h2>
           <p className="text-xs text-gray-400 mt-1">All panels: −1.5 to +1.5 mV · 0–100 ms</p>
           <div className="grid grid-cols-2 gap-3 mt-3">
             {FRONTAL_LEADS.map(lead => <div key={lead.name} className="rounded-lg border border-gray-700 p-2">
@@ -116,7 +116,7 @@ export default function MeanAxisPage() {
       </div>
     </div>
     <Explanation title="How the mean is constructed" className="mt-3">
-      <p>The blue vector describes one instant. The thin spokes sample equal time intervals. To find the mean QRS vector, add the horizontal and vertical components over the entire QRS interval and divide by its duration. Larger vectors and longer lasting contributions carry more weight. The dashed amber vector shows that sum building toward the yellow mean.</p>
+      <p>The blue vector describes one instant. The thin spokes sample equal time intervals. To find the mean QRS vector, add the horizontal and vertical components throughout the QRS complex and divide by its duration. Larger vectors and longer lasting contributions carry more weight. The dashed amber vector shows that sum building toward the yellow mean.</p>
       <p className="mt-2">The signed area of each lead’s QRS is the projection of the integrated vector onto that lead. Positive and negative areas can cancel. The mean direction is not necessarily the direction at the R peak, and it does not describe every cell’s activation direction.</p>
       <p className="mt-2">Angles start at Lead I (0°, toward the patient’s left); +90° points inferiorly. These are conventional electrical axes sharing an origin, not anatomical lines between electrodes.</p>
     </Explanation>
