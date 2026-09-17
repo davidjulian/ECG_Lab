@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { CELL_XS, ROW_Y, CELL_CYCLE_MS, CENTERED_PULSE_MS, cellState, sourcesForStates, cellSourcesAt, cellPotential, cellField } from '../src/lib/cellRowModel.js'
+import { CELL_XS, ROW_Y, CELL_CYCLE_MS, CENTERED_PULSE_MS, CELL_SMOOTHING_MS, cellState, sourcesForStates, cellSourcesAt, cellPotential, cellField } from '../src/lib/cellRowModel.js'
 
 const a = [CELL_XS[0] - 31, ROW_Y - 48.5]
 const b = [CELL_XS[9] + 31, ROW_Y - 48.5]
@@ -18,7 +18,7 @@ test('uniform membrane polarization creates no extracellular source or field', (
   }
 })
 test('cycle has initial and final resting intervals and balanced sources throughout', () => {
-  for (const t of [0, 150, 300, 1500, CELL_CYCLE_MS]) {
+  for (const t of [0, 150, 255, 2000, CELL_CYCLE_MS]) {
     assert.ok(CELL_XS.every((_, i) => cellState(i, t) === 1))
   }
   for (let t = 0; t <= CELL_CYCLE_MS; t++) {
@@ -28,8 +28,8 @@ test('cycle has initial and final resting intervals and balanced sources through
 })
 test('centered patch gives equal nonzero end-probe potentials but moving one probe reveals a signal', () => {
   const states = CELL_XS.map((_, i) => cellState(i, CENTERED_PULSE_MS))
-  assert.deepEqual(states, states.slice().reverse())
-  assert.ok(states.includes(1) && states.includes(-1))
+  states.forEach((state, i) => assert.ok(Math.abs(state - states[9 - i]) < 1e-12))
+  assert.ok(states[0] > 0.9 && states.includes(-1))
   assert.ok(Math.abs(difference(CENTERED_PULSE_MS)) < 1e-10)
   assert.ok(Math.abs(cellPotential(...a, cellSourcesAt(CENTERED_PULSE_MS))) > 100)
   assert.ok(Math.abs(difference(CENTERED_PULSE_MS, [CELL_XS[3], ROW_Y - 48.5])) > 100)
@@ -41,10 +41,47 @@ test('a single resting/depolarized boundary retains a nonzero dipole signal', ()
 })
 test('lesson activation/recovery intervals have opposite polarity at default probes', () => {
   for (let t = 400; t <= 550; t++) assert.ok(difference(t) < 0)
-  for (let t = 1200; t <= 1350; t++) assert.ok(difference(t) > 0)
+  for (let t = 1590; t <= 1740; t++) assert.ok(difference(t) > 0)
 })
 test('probes mirrored above and below the row cancel throughout activity', () => {
   for (let t = 0; t <= CELL_CYCLE_MS; t += 10) {
     assert.ok(Math.abs(difference(t, [210, ROW_Y - 55], [210, ROW_Y + 55])) < 1e-10)
   }
+})
+
+test('averaging matches the same centered window applied to the underlying sources', () => {
+  for (const t of [280, 710, CENTERED_PULSE_MS, 1820]) {
+    const steps = 1000
+    let integral = 0
+    for (let k = 0; k <= steps; k++) {
+      const time = t + (k / steps - 0.5) * CELL_SMOOTHING_MS
+      const weight = k === 0 || k === steps ? 0.5 : 1
+      integral += weight * cellPotential(...a, cellSourcesAt(time, false)) / steps
+    }
+    assert.ok(Math.abs(integral - cellPotential(...a, cellSourcesAt(t))) < 0.002)
+  }
+})
+test('default smoothed lead has two phases, with symmetric peak magnitudes and midpoint zero', () => {
+  let negative = 0, positive = 0, previousSign = 0, crossings = 0
+  for (let t = 0; t <= CELL_CYCLE_MS; t++) {
+    const v = difference(t)
+    negative = Math.min(negative, v)
+    positive = Math.max(positive, v)
+    const sign = Math.abs(v) > 1 ? Math.sign(v) : 0
+    if (sign && previousSign && sign !== previousSign) crossings++
+    if (sign) previousSign = sign
+  }
+  assert.equal(crossings, 1)
+  assert.ok(positive > 400 && positive < 700)
+  assert.ok(Math.abs(positive + negative) < 1e-8)
+})
+test('averaging reduces sharp cell-to-cell changes', () => {
+  const roughness = smoothing => {
+    const values = Array.from({ length: CELL_CYCLE_MS + 1 }, (_, t) => {
+      const sources = cellSourcesAt(t, smoothing)
+      return cellPotential(...a, sources) - cellPotential(...b, sources)
+    })
+    return values.slice(1, -1).reduce((sum, v, i) => sum + (values[i] - 2 * v + values[i + 2]) ** 2, 0)
+  }
+  assert.ok(roughness(true) < roughness(false) / 2)
 })

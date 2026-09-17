@@ -1,6 +1,6 @@
 ﻿import { useEffect, useRef, useState } from 'react'
 import p5 from 'p5'
-import { CELL_COUNT, CELL_WIDTH, CELL_XS, ROW_Y, REST_BEFORE, STEP_DELAY, TRANS_DUR, APD, LAST_DEPOL_END, LAST_REPOL_END, CELL_CYCLE_MS, CENTERED_PULSE_MS, cellState, cellSourcesAt, cellPotential, cellField } from '../../lib/cellRowModel'
+import { CELL_COUNT, CELL_WIDTH, CELL_XS, ROW_Y, REST_BEFORE, STEP_DELAY, TRANS_DUR, APD, LAST_DEPOL_END, LAST_REPOL_END, CELL_CYCLE_MS, CENTERED_PULSE_MS, CELL_SMOOTHING_MS, cellState, cellSourcesAt, cellPotential, cellField } from '../../lib/cellRowModel'
 import ModulePage from '../../components/ModulePage'
 import Explanation from '../../components/Explanation'
 import { useNavigate } from 'react-router-dom'
@@ -578,10 +578,13 @@ function SimCells() {
 
   const [playing, setPlaying] = useState(false)
   const [speed, setSpeed] = useState(1)
+  const [smoothing, setSmoothing] = useState(true)
+  const smoothingRef = useRef(smoothing)
+  useEffect(() => { smoothingRef.current = smoothing }, [smoothing])
   const [showField, setShowField] = useState(false)
   const [showEq, setShowEq] = useState(false)
   const [showCurrent, setShowCurrent] = useState(false)
-  const [voltageRange, setVoltageRange] = useState(2)
+  const [voltageRange, setVoltageRange] = useState(1)
   const voltageRangeRef = useRef(voltageRange)
   useEffect(() => { voltageRangeRef.current = voltageRange }, [voltageRange])
 
@@ -644,14 +647,15 @@ function SimCells() {
       // leaving the reading only approximately zero.
       const SNAP_RADIUS = 18
 
-      const sAt = cellState
-      const chargesAt = cellSourcesAt
+      const sAt = (i, t) => cellState(i, t, smoothingRef.current)
+      const chargesAt = t => cellSourcesAt(t, smoothingRef.current)
       const volt = cellPotential
       const fld = cellField
       function phaseName(t) {
-        if (t <= REST_BEFORE || t >= LAST_REPOL_END) return 'resting (polarized)'
-        if (t < REST_BEFORE + TRANS_DUR + APD) return 'depolarization'
-        if (t < LAST_DEPOL_END) return 'activation and recovery'
+        const half = smoothingRef.current ? CELL_SMOOTHING_MS / 2 : 0
+        if (t <= REST_BEFORE - half || t >= LAST_REPOL_END + half) return 'resting (polarized)'
+        if (t < REST_BEFORE + TRANS_DUR + APD - half) return 'depolarization'
+        if (t < LAST_DEPOL_END + half) return 'activation and recovery'
         return 'repolarization'
       }
 
@@ -883,8 +887,9 @@ function SimCells() {
           const ti = REST_BEFORE + i * STEP_DELAY, depolEnd = ti + TRANS_DUR
           const repolStart = depolEnd + APD, repolEnd = repolStart + TRANS_DUR
           const s = sAt(i, t)
-          const transitioning = (t >= ti && t < depolEnd) || (t >= repolStart && t < repolEnd)
-          const transitionSign = (t >= repolStart && t < repolEnd) ? 1 : -1
+          const half = smoothingRef.current ? CELL_SMOOTHING_MS / 2 : 0
+          const transitioning = (t > ti - half && t < depolEnd + half) || (t > repolStart - half && t < repolEnd + half)
+          const transitionSign = (t > repolStart - half && t < repolEnd + half) ? 1 : -1
           drawCell(xs[i], s, transitioning, transitionSign)
         }
 
@@ -1101,6 +1106,13 @@ function SimCells() {
         <span ref={scrubLabelRef} className="text-xs font-mono text-gray-500 tabular-nums w-28 text-right">
           0 / {CELL_CYCLE_MS} ms
         </span>
+      </SimBar>
+      <SimBar>
+        <button onClick={() => setSmoothing(v => !v)}
+          className={`shrink-0 px-3 py-1 rounded-full border text-xs ${smoothing ? 'bg-teal-900/50 border-teal-700 text-teal-300' : 'border-gray-700 text-gray-500'}`}>
+          Smoothing {smoothing ? 'ON' : 'OFF'}
+        </button>
+        <span>Smoothing averages nearby stages of the cycle for the cells, field, and readings.</span>
       </SimBar>
       <SimBar>
         <label className="flex items-center gap-2">
@@ -1377,14 +1389,17 @@ export default function PhysicsFoundations() {
             A uniformly resting row has no sources in this model: each probe reads zero wherever it is placed.
             A uniformly depolarized row would also have no sources, but this short traveling pulse
             never depolarizes all ten cells at once.
-            <br /><br />At Mid-cycle, a depolarized patch has matching resting regions on either side.
+            <br /><br />At Mid-cycle, a depolarized patch has matching outer regions on either side.
             With the probes in their initial symmetric positions, their potentials are equal and
             nonzero, so ΔV is zero. Moving one probe can reveal a voltage difference at the same instant.
             This is cancellation in a particular measurement, not the absence of extracellular sources.
             <br /><br />The two boundaries of a centered patch make opposing dipole contributions.
             A single boundary between resting and depolarized regions makes a dipole contribution;
             an entire pattern of activity need not have a nonzero net dipole.
-            This is a simplified cable source model, not a full cardiac ECG.
+            Smoothing uses a centered 90 ms average of cell states before calculating sources, so the
+            colors, field, probe readings, and trace stay consistent. It does not add playback lag.
+            The longer depolarized interval makes the two main phases easier to compare in the default lead.
+            This is a simplified cable source model with illustrative timing, not a full cardiac ECG.
           </Callout>
 
           <ForwardLink onNext={() => setActive('2D')}>continue to 2D — Dot Product</ForwardLink>
