@@ -823,15 +823,17 @@ function SimCells() {
         p.rectMode(p.CORNER)
 
         // A stable nucleus identifies the shape as a cell; the surrounding
-        // cell color and R/D label encode membrane state, not nuclear activity.
+        // cell color and exterior signs encode membrane state, not nuclear activity.
         p.fill(39, 35, 65, 220); p.stroke(224, 210, 255, 150); p.strokeWeight(0.8)
-        p.ellipse(x, ROW_Y - 7, 17, 21)
+        p.ellipse(x, ROW_Y, 17, 21)
         p.noStroke(); p.fill(174, 156, 203, 170)
-        p.ellipse(x + 2, ROW_Y - 9, 5, 6)
+        p.ellipse(x + 2, ROW_Y - 2, 5, 6)
 
-        p.textAlign(p.CENTER, p.CENTER); p.textSize(10)
-        p.fill(255, 255, 255, 220)
-        p.text(s > 0.99 ? 'R' : s < -0.99 ? 'D' : '…', x, ROW_Y + 14)
+        p.textAlign(p.CENTER, p.CENTER); p.textSize(15)
+        p.fill(255, 255, 255, 220 * Math.abs(s))
+        const exteriorSign = s >= 0 ? '+' : '−'
+        p.text(exteriorSign, x, ROW_Y - CELL_H / 2 - 12)
+        p.text(exteriorSign, x, ROW_Y + CELL_H / 2 + 12)
 
       }
 
@@ -1077,7 +1079,7 @@ function SimCells() {
         <button onClick={() => jumpTo(0)} className="px-3 py-1 rounded border border-gray-700 text-gray-300">Start</button>
         <button onClick={() => jumpTo(CENTERED_PULSE_MS)} className="px-3 py-1 rounded border border-gray-700 text-gray-300">Mid-cycle</button>
         <button onClick={() => resetProbesRef.current()} className="px-3 py-1 rounded border border-gray-700 text-gray-300">Reset probes</button>
-        <span><span className="text-blue-400">R = resting (polarized)</span> · <span className="text-amber-400">D = depolarized</span></span>
+        <span><span className="text-blue-400">+ outside: resting (polarized)</span> · <span className="text-amber-400">− outside: depolarized</span></span>
       </SimBar>
       <SimBar>
         <span className="text-xs uppercase tracking-widest text-gray-600 shrink-0">Scrub</span>
@@ -1356,7 +1358,9 @@ export default function PhysicsFoundations() {
       {active === '2C' && (
         <Section label="2C" title="Compare cell states and extracellular recordings">
           <p className="text-xs text-gray-400 leading-snug mb-2">
-            Ten cells are shown in a row. Blue R marks resting (polarized) cells; amber D marks depolarized cells.
+            Ten cells are shown in a row. Blue cells with exterior + signs are resting (polarized);
+            amber cells with exterior − signs are depolarized. The signs indicate membrane polarity;
+            opposite charges on the inner membrane surface are not shown.
             Use Play, Pause, and Scrub to inspect their states. Start and Mid-cycle select two instants;
             Reset probes restores the initial electrode positions.
             Drag the green (A) and purple (B) probes to sample extracellular potential.
