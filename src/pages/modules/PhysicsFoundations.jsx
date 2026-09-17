@@ -1,5 +1,6 @@
 ﻿import { useEffect, useRef, useState } from 'react'
 import p5 from 'p5'
+import { CELL_COUNT, CELL_WIDTH, CELL_XS, ROW_Y, REST_BEFORE, STEP_DELAY, TRANS_DUR, APD, LAST_DEPOL_END, LAST_REPOL_END, CELL_CYCLE_MS, CENTERED_PULSE_MS, cellState, cellSourcesAt, cellPotential, cellField } from '../../lib/cellRowModel'
 import ModulePage from '../../components/ModulePage'
 import Explanation from '../../components/Explanation'
 import { useNavigate } from 'react-router-dom'
@@ -9,8 +10,8 @@ import { modelMillivolts, formatMillivolts, gridDotProduct, DOT_UNIT_TO_MV } fro
 const TABS = [
   { id: '2A', label: '2A · Charges' },
   { id: '2B', label: '2B · Dipole' },
-  { id: '2C', label: '2C · Dot Product' },
-  { id: '2D', label: '2D · Depolarization' },
+  { id: '2C', label: '2C · Depolarization' },
+  { id: '2D', label: '2D · Dot Product' },
 ]
 
 // ── Layout helpers ────────────────────────────────────────────────────────────
@@ -568,19 +569,14 @@ function Sim2B() {
   )
 }
 
-// ── 2D: A row of cells depolarizing/repolarizing generates a dipole ───────────
+// ── 2C: Extracellular sources from a row of cells ───────────
 function PlayIcon()  { return <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg> }
 function PauseIcon() { return <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M7 5h4v14H7zm6 0h4v14h-4z"/></svg> }
 const CELL_SPEEDS = [0.25, 0.5, 1, 1.5, 2]
-// Mirrors the timing constants inside Sim2DCells's p5 sketch (STEP_DELAY=90,
-// TRANS_DUR=60, APD=260, REST_PAUSE=500, N=10) — kept in sync manually since
-// the scrub input's `max` is needed outside the sketch closure.
-const CELLS_TOTAL_CYCLE_MS = 9 * 90 + 2 * 60 + 260 + 500
-
-function Sim2DCells() {
+function SimCells() {
   const containerRef = useRef()
 
-  const [playing, setPlaying] = useState(true)
+  const [playing, setPlaying] = useState(false)
   const [speed, setSpeed] = useState(1)
   const [showField, setShowField] = useState(false)
   const [showEq, setShowEq] = useState(false)
@@ -603,7 +599,13 @@ function Sim2DCells() {
   // Scrubber plumbing — uncontrolled DOM node + refs, matching
   // LeadPlacementLab's pattern, so dragging never triggers a React re-render
   // during the p5 draw loop.
+  const resetProbesRef = useRef(() => {})
   const simTimeRef = useRef(0)
+  const jumpTo = time => {
+    playingRef.current = false
+    setPlaying(false)
+    simTimeRef.current = time
+  }
   const scrubbingRef = useRef(false)
   const scrubRef = useRef(null)
   const scrubLabelRef = useRef(null)
@@ -611,27 +613,15 @@ function Sim2DCells() {
   useEffect(() => {
     // Scaled ~0.78x from the original 720×480 (same uniform-factor rule as
     // Sim2A — see its comment).
-    const W = 560, H = 375, K = 29556
-    const N = 10
-    const QMAX = 1
-    const MARGIN_X = 54, GAP = 6
-    const CELL_W = (W - 2 * MARGIN_X - (N - 1) * GAP) / N
-    const CELL_H = 47
-    const ROW_Y = H * 0.54
+    const W = 560, H = 375
+    const N = CELL_COUNT, CELL_W = CELL_WIDTH, CELL_H = 47
     const CX = W / 2
-
-    // Timing (ms, pre speed-scaling)
-    const STEP_DELAY = 90
-    const TRANS_DUR = 60
-    const APD = 260
-    const REST_PAUSE = 500
-    const lastRepolEnd = (N - 1) * STEP_DELAY + 2 * TRANS_DUR + APD
-    const TOTAL_CYCLE = lastRepolEnd + REST_PAUSE
+    const TOTAL_CYCLE = CELL_CYCLE_MS
 
     let cancelled = false
 
     const sketch = (p) => {
-      const xs = Array.from({ length: N }, (_, i) => MARGIN_X + CELL_W / 2 + i * (CELL_W + GAP))
+      const xs = CELL_XS
 
       // Two draggable probes — the actual "electrodes" reading the voltage
       // this changing charge distribution produces, so ΔV isn't an
@@ -639,6 +629,10 @@ function Sim2DCells() {
       const PR = 7
       let probeA = { x: xs[0] - 31, y: ROW_Y - CELL_H / 2 - 25 }
       let probeB = { x: xs[N - 1] + 31, y: ROW_Y - CELL_H / 2 - 25 }
+      resetProbesRef.current = () => {
+        probeA = { x: xs[0] - 31, y: ROW_Y - CELL_H / 2 - 25 }
+        probeB = { x: xs[N - 1] + 31, y: ROW_Y - CELL_H / 2 - 25 }
+      }
       let dragA = false, dragB = false
 
       // A "perpendicular" (zero) reading requires the two probes to be
@@ -650,50 +644,15 @@ function Sim2DCells() {
       // leaving the reading only approximately zero.
       const SNAP_RADIUS = 18
 
-      function smooth(f) { return f * f * (3 - 2 * f) }
-
-      // State of cell i at time t: +1 = resting (polarized), −1 = depolarized.
-      function sAt(i, t) {
-        const ti = i * STEP_DELAY
-        const depolEnd = ti + TRANS_DUR
-        const repolStart = depolEnd + APD
-        const repolEnd = repolStart + TRANS_DUR
-        if (t < ti) return 1
-        if (t < depolEnd) return 1 - 2 * smooth((t - ti) / TRANS_DUR)
-        if (t < repolStart) return -1
-        if (t < repolEnd) return -1 + 2 * smooth((t - repolStart) / TRANS_DUR)
-        return 1
-      }
-
-      const lastDepolEnd = (N - 1) * STEP_DELAY + TRANS_DUR
+      const sAt = cellState
+      const chargesAt = cellSourcesAt
+      const volt = cellPotential
+      const fld = cellField
       function phaseName(t) {
-        if (t < lastDepolEnd) return 'depolarizing'
-        if (t < lastRepolEnd) return 'repolarizing'
-        return 'resting'
-      }
-
-      function chargesAt(t) {
-        return xs.map((x, i) => ({ x, y: ROW_Y, q: sAt(i, t) * QMAX }))
-      }
-
-      function volt(x, y, cs) {
-        let v = 0
-        for (const c of cs) {
-          const r = Math.max(Math.hypot(x - c.x, y - c.y), 8)
-          v += K * c.q / r
-        }
-        return v
-      }
-
-      function fld(x, y, cs) {
-        let ex = 0, ey = 0
-        for (const c of cs) {
-          const dx = x - c.x, dy = y - c.y
-          const r2 = Math.max(dx * dx + dy * dy, 64), r = Math.sqrt(r2)
-          const f = K * c.q / (r2 * r)
-          ex += f * dx; ey += f * dy
-        }
-        return [ex, ey]
+        if (t <= REST_BEFORE || t >= LAST_REPOL_END) return 'resting (polarized)'
+        if (t < REST_BEFORE + TRANS_DUR + APD) return 'depolarization'
+        if (t < LAST_DEPOL_END) return 'activation and recovery'
+        return 'repolarization'
       }
 
       const CR = 5
@@ -850,7 +809,7 @@ function Sim2DCells() {
         return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t]
       }
 
-      function drawCell(i, x, s, transitioning, transitionSign) {
+      function drawCell(x, s, transitioning, transitionSign) {
         const AMBER = [245, 158, 11], BLUE = [59, 130, 246]
         const [r, g, b] = lerpColor(AMBER, BLUE, (s + 1) / 2)
         if (transitioning) {
@@ -859,20 +818,21 @@ function Sim2DCells() {
         }
         p.fill(r, g, b); p.stroke(255, 255, 255, 60); p.strokeWeight(1.2)
         p.rectMode(p.CENTER)
-        p.rect(x, ROW_Y, CELL_W, CELL_H, 8)
+        p.rect(x, ROW_Y, CELL_W, CELL_H, 13)
         p.drawingContext.shadowBlur = 0
         p.rectMode(p.CORNER)
 
-        p.noStroke(); p.textAlign(p.CENTER, p.CENTER); p.textSize(13)
-        if (s > 0.35) {
-          p.fill(255, 255, 255, 220)
-          p.text('+', x, ROW_Y - CELL_H / 2 - 12)
-          p.text('+', x, ROW_Y + CELL_H / 2 + 12)
-        } else if (s < -0.35) {
-          p.fill(255, 255, 255, 220)
-          p.text('−', x, ROW_Y - CELL_H / 2 - 12)
-          p.text('−', x, ROW_Y + CELL_H / 2 + 12)
-        }
+        // A stable nucleus identifies the shape as a cell; the surrounding
+        // cell color and R/D label encode membrane state, not nuclear activity.
+        p.fill(39, 35, 65, 220); p.stroke(224, 210, 255, 150); p.strokeWeight(0.8)
+        p.ellipse(x, ROW_Y - 7, 17, 21)
+        p.noStroke(); p.fill(174, 156, 203, 170)
+        p.ellipse(x + 2, ROW_Y - 9, 5, 6)
+
+        p.textAlign(p.CENTER, p.CENTER); p.textSize(10)
+        p.fill(255, 255, 255, 220)
+        p.text(s > 0.99 ? 'R' : s < -0.99 ? 'D' : '…', x, ROW_Y + 14)
+
       }
 
       function arrow(x1, y1, x2, y2, r, g, b, a = 220, sw = 3) {
@@ -918,12 +878,12 @@ function Sim2DCells() {
 
         // Cells
         for (let i = 0; i < N; i++) {
-          const ti = i * STEP_DELAY, depolEnd = ti + TRANS_DUR
+          const ti = REST_BEFORE + i * STEP_DELAY, depolEnd = ti + TRANS_DUR
           const repolStart = depolEnd + APD, repolEnd = repolStart + TRANS_DUR
           const s = sAt(i, t)
           const transitioning = (t >= ti && t < depolEnd) || (t >= repolStart && t < repolEnd)
           const transitionSign = (t >= repolStart && t < repolEnd) ? 1 : -1
-          drawCell(i, xs[i], s, transitioning, transitionSign)
+          drawCell(xs[i], s, transitioning, transitionSign)
         }
 
         // Probes — actual electrode voltage readout, driving ΔV
@@ -952,7 +912,7 @@ function Sim2DCells() {
         // (unlike p(t), which is an intrinsic property of the charge
         // distribution and never changes). Reused below for both the
         // electrode-reading arrow and the "ECG output" strip chart.
-        const steps = 60
+        const steps = 120
         const dvSamples = new Array(steps + 1)
         let maxDV = 1e-6
         for (let k = 0; k <= steps; k++) {
@@ -1034,7 +994,7 @@ function Sim2DCells() {
         p.fill(245, 158, 11, 200); p.noStroke()
         p.textAlign(p.LEFT, p.BOTTOM); p.textSize(9)
         const offScale = modelMillivolts(maxDV) > rangeMv
-        p.text(offScale ? 'Off scale: choose a larger range' : 'ECG output ΔV (fixed scale)', chX + 5, chY + chH - 4)
+        p.text(offScale ? 'Off scale: choose a larger range' : 'Full-cycle ECG output ΔV', chX + 5, chY + chH - 4)
       }
 
       p.mousePressed = () => {
@@ -1114,23 +1074,30 @@ function Sim2DCells() {
         </button>
       </SimBar>
       <SimBar>
+        <button onClick={() => jumpTo(0)} className="px-3 py-1 rounded border border-gray-700 text-gray-300">Start</button>
+        <button onClick={() => jumpTo(CENTERED_PULSE_MS)} className="px-3 py-1 rounded border border-gray-700 text-gray-300">Mid-cycle</button>
+        <button onClick={() => resetProbesRef.current()} className="px-3 py-1 rounded border border-gray-700 text-gray-300">Reset probes</button>
+        <span><span className="text-blue-400">R = resting (polarized)</span> · <span className="text-amber-400">D = depolarized</span></span>
+      </SimBar>
+      <SimBar>
         <span className="text-xs uppercase tracking-widest text-gray-600 shrink-0">Scrub</span>
         <input
           ref={scrubRef}
           type="range"
           min={0}
-          max={CELLS_TOTAL_CYCLE_MS}
+          max={CELL_CYCLE_MS}
           defaultValue={0}
           step={1}
           onMouseDown={() => { scrubbingRef.current = true; setPlaying(false) }}
           onTouchStart={() => { scrubbingRef.current = true; setPlaying(false) }}
           onMouseUp={() => { scrubbingRef.current = false }}
           onTouchEnd={() => { scrubbingRef.current = false }}
-          onChange={e => { simTimeRef.current = Number(e.target.value) }}
+          onChange={e => jumpTo(Number(e.target.value))}
+          aria-label="Cycle time"
           className="flex-1 min-w-[120px] accent-emerald-500"
         />
         <span ref={scrubLabelRef} className="text-xs font-mono text-gray-500 tabular-nums w-28 text-right">
-          0 / {CELLS_TOTAL_CYCLE_MS} ms
+          0 / {CELL_CYCLE_MS} ms
         </span>
       </SimBar>
       <SimBar>
@@ -1148,7 +1115,7 @@ function Sim2DCells() {
 }
 
 // ── 2D: Draggable vectors, dot product, projection ───────────────────────────
-function Sim2D() {
+function SimDotProduct() {
   const containerRef = useRef()
 
   useEffect(() => {
@@ -1311,7 +1278,7 @@ function Sim2D() {
   return (
     <CanvasWrap containerRef={containerRef}>
       <SimBar>
-        <span><span className="text-blue-400">Blue</span> = cardiac vector (A) &nbsp;·&nbsp; <span className="text-amber-400">Amber</span> = lead axis (B) &nbsp;·&nbsp; <span className="text-gray-400">Projection shown on B axis</span></span>
+        <span><span className="text-blue-400">Blue</span> = dipole vector (A) &nbsp;·&nbsp; <span className="text-amber-400">Amber</span> = lead axis (B) &nbsp;·&nbsp; <span className="text-gray-400">Projection shown on B axis</span></span>
       </SimBar>
     </CanvasWrap>
   )
@@ -1381,15 +1348,49 @@ export default function PhysicsFoundations() {
             An equivalent dipole is a simplified representation of the heart's distributed sources.
           </Callout>
 
-          <ForwardLink onNext={() => setActive('2C')}>continue to 2C — Dot Product</ForwardLink>
+          <ForwardLink onNext={() => setActive('2C')}>continue to 2C — Depolarization</ForwardLink>
         </Section>
       )}
 
       {/* ── 2C ──────────────────────────────────────────────────────────────── */}
       {active === '2C' && (
-        <Section label="2C" title="Compare two vectors">
+        <Section label="2C" title="Compare cell states and extracellular recordings">
           <p className="text-xs text-gray-400 leading-snug mb-2">
-            Vector <strong className="text-blue-400">A</strong> is the cardiac dipole at one instant.
+            Ten cells are shown in a row. Blue R marks resting (polarized) cells; amber D marks depolarized cells.
+            Use Play, Pause, and Scrub to inspect their states. Start and Mid-cycle select two instants;
+            Reset probes restores the initial electrode positions.
+            Drag the green (A) and purple (B) probes to sample extracellular potential.
+            The graph shows ΔV = V(A) − V(B) over a full cycle; its cursor and the amber arrow mark the selected instant.
+            Probes snap into a mirrored arrangement when placed at matching positions above and below
+            the row. Use Voltage range to set the graph scale. Field lines, equipotentials, and
+            current lines can be toggled below the animation.
+          </p>
+
+          <SimCells />
+
+          <Callout>
+            Extracellular sources arise where neighboring cells have different membrane potentials.
+            A uniformly resting row has no sources in this model: each probe reads zero wherever it is placed.
+            A uniformly depolarized row would also have no sources, but this short traveling pulse
+            never depolarizes all ten cells at once.
+            <br /><br />At Mid-cycle, a depolarized patch has matching resting regions on either side.
+            With the probes in their initial symmetric positions, their potentials are equal and
+            nonzero, so ΔV is zero. Moving one probe can reveal a voltage difference at the same instant.
+            This is cancellation in a particular measurement, not the absence of extracellular sources.
+            <br /><br />The two boundaries of a centered patch make opposing dipole contributions.
+            A single boundary between resting and depolarized regions makes a dipole contribution;
+            an entire pattern of activity need not have a nonzero net dipole.
+            This is a simplified cable source model, not a full cardiac ECG.
+          </Callout>
+
+          <ForwardLink onNext={() => setActive('2D')}>continue to 2D — Dot Product</ForwardLink>
+        </Section>
+      )}
+      {/* ── 2D ──────────────────────────────────────────────────────────────── */}
+      {active === '2D' && (
+        <Section label="2D" title="Compare two vectors">
+          <p className="text-xs text-gray-400 leading-snug mb-2">
+            Vector <strong className="text-blue-400">A</strong> represents a dipole at one instant.
             Vector <strong className="text-amber-400">B</strong> is the lead axis (the direction from −
             electrode to + electrode, with a modeled sensitivity given by its length).
             Vector lengths use model units, with one unit per grid square.
@@ -1401,10 +1402,10 @@ export default function PhysicsFoundations() {
             Equivalent lead voltage = dot product × 0.1 mV per model unit². This fixed conversion
             illustrates how the projection affects a lead recording.
           </p>
-          <Sim2D />
+          <SimDotProduct />
 
           <Explanation className="my-2">
-          <Equation label="θ = angle between cardiac vector and lead axis">
+          <Equation label="θ = angle between dipole vector and lead axis">
             {'A · B = |A| |B| cos θ'}
           </Equation>
           <div className="grid grid-cols-3 gap-3 text-sm mb-3">
@@ -1423,43 +1424,17 @@ export default function PhysicsFoundations() {
 
           <p>
             In this model, a lead has a fixed vector (B).
-            As the cardiac vector (A) changes through time, its dot product with B changes.
+            As the dipole vector (A) changes through time, its dot product with B changes.
             Applying the fixed voltage scale and plotting the result through time produces a
             modeled lead waveform. At any instant, a vector perpendicular to B contributes zero
             to that lead, even when the cardiac vector is substantial.
           </p>
           </Explanation>
 
-          <ForwardLink onNext={() => setActive('2D')}>continue to 2D — Depolarization</ForwardLink>
-        </Section>
-      )}
-
-      {/* ── 2D ──────────────────────────────────────────────────────────────── */}
-      {active === '2D' && (
-        <Section label="2D" title="Compare cell states and extracellular recordings">
-          <p className="text-xs text-gray-400 leading-snug mb-2">
-            Ten cells are shown in a row. Use Play, Pause, and Scrub to inspect their electrical states.
-            Drag the green (A) and purple (B) probes to sample extracellular potential.
-            The graph and amber arrow display ΔV = V(A) − V(B).
-            Probes snap into a mirrored arrangement when placed at matching positions above and below
-            the row. Use Voltage range to set the graph scale. Field lines, equipotentials, and
-            current lines can be toggled below the animation.
-          </p>
-
-          <Sim2DCells />
-
-          <Callout>
-            Both probes sample contributions from all the modeled cells. Their voltage difference
-            can change while one selected cell remains depolarized. At mirrored positions, each cell
-            contributes equally to both probes, so the difference is zero even during tissue activity.
-            <br /><br />Activation and recovery travel in the same order in this row, giving opposite
-            signs during the early activation and late recovery intervals. The row is a simplified
-            model; its waveform is not a full cardiac ECG.
-          </Callout>
-
           <ForwardLink onNext={() => navigate('/play/leads')}>continue to Module 3 — place electrodes and compare leads</ForwardLink>
         </Section>
       )}
+
 
     </ModulePage>
   )
