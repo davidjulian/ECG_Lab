@@ -1,8 +1,8 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { CELL_XS, ROW_Y, CELL_CENTER_X, CELL_LEAD_RADIUS, cellLeadProbes, CELL_CYCLE_MS, CENTERED_PULSE_MS, CELL_SMOOTHING_MS, cellState, sourcesForStates, cellSourcesAt, cellPotential, cellField } from '../src/lib/cellRowModel.js'
+import { CELL_XS, ROW_Y, CELL_CENTER_X, CELL_LEAD_RADIUS, cellLeadProbes, cellRecordingProbes, CELL_RECORDING_DISTANCE_FACTOR, CELL_CYCLE_MS, CELL_PARALLEL_PEAK, CENTERED_PULSE_MS, CELL_SMOOTHING_MS, cellState, sourcesForStates, cellSourcesAt, cellPotential, cellField } from '../src/lib/cellRowModel.js'
 
-const defaultProbes = cellLeadProbes(0)
+const defaultProbes = cellRecordingProbes(0)
 const a = [defaultProbes.a.x, defaultProbes.a.y]
 const b = [defaultProbes.b.x, defaultProbes.b.y]
 const difference = (t, first = a, second = b) => {
@@ -32,7 +32,7 @@ test('centered patch gives equal nonzero end-probe potentials but moving one pro
   states.forEach((state, i) => assert.ok(Math.abs(state - states[9 - i]) < 1e-12))
   assert.ok(states[0] > 0.9 && states.includes(-1))
   assert.ok(Math.abs(difference(CENTERED_PULSE_MS)) < 1e-10)
-  assert.ok(Math.abs(cellPotential(...a, cellSourcesAt(CENTERED_PULSE_MS))) > 100)
+  assert.ok(Math.abs(cellPotential(...a, cellSourcesAt(CENTERED_PULSE_MS))) > 1)
   assert.ok(Math.abs(difference(CENTERED_PULSE_MS, [CELL_XS[3], ROW_Y - 48.5])) > 100)
 })
 test('a single resting/depolarized boundary retains a nonzero dipole signal', () => {
@@ -73,7 +73,7 @@ test('default smoothed lead has two phases, with symmetric peak magnitudes and m
     if (sign) previousSign = sign
   }
   assert.equal(crossings, 1)
-  assert.ok(positive > 400 && positive < 700)
+  assert.ok(positive > 100 && positive < 200)
   assert.ok(Math.abs(positive + negative) < 1e-8)
 })
 test('averaging reduces sharp cell-to-cell changes', () => {
@@ -84,7 +84,7 @@ test('averaging reduces sharp cell-to-cell changes', () => {
     })
     return values.slice(1, -1).reduce((sum, v, i) => sum + (values[i] - 2 * v + values[i + 2]) ** 2, 0)
   }
-  assert.ok(roughness(true) < roughness(false) / 2)
+  assert.ok(roughness(true) < roughness(false))
 })
 
 test('rotation fixes midpoint, radius and electrode separation at every angle', () => {
@@ -98,7 +98,7 @@ test('rotation fixes midpoint, radius and electrode separation at every angle', 
 })
 test('vertical lead cancels, half-turn reverses polarity, centered pulse cancels at every angle', () => {
   const voltage = (angle, time) => {
-    const { a, b } = cellLeadProbes(angle)
+    const { a, b } = cellRecordingProbes(angle)
     const sources = cellSourcesAt(time)
     return cellPotential(a.x, a.y, sources) - cellPotential(b.x, b.y, sources)
   }
@@ -109,5 +109,42 @@ test('vertical lead cancels, half-turn reverses polarity, centered pulse cancels
   for (let angle = 0; angle < 360; angle += 5) {
     assert.ok(Math.abs(voltage(angle, CENTERED_PULSE_MS)) < 1e-9)
   }
-  assert.ok(Math.abs(voltage(0, 450)) > 100)
+  assert.ok(Math.abs(voltage(0, 450)) > 50)
+})
+
+test('recording geometry is distant while display handles remain compact', () => {
+  for (const angle of [0, 45, 90, 180, 270]) {
+    const display = cellLeadProbes(angle), recording = cellRecordingProbes(angle)
+    for (const key of ['a', 'b']) {
+      assert.ok(Math.abs(recording[key].x - CELL_CENTER_X - CELL_RECORDING_DISTANCE_FACTOR * (display[key].x - CELL_CENTER_X)) < 1e-10)
+      assert.ok(Math.abs(recording[key].y - ROW_Y - CELL_RECORDING_DISTANCE_FACTOR * (display[key].y - ROW_Y)) < 1e-10)
+    }
+  }
+})
+test('distant default electrodes suppress the exaggerated near-end peaks', () => {
+  const halfRow = Math.abs(difference(735))
+  let peak = 0
+  for (let t = 0; t < CELL_CYCLE_MS; t++) peak = Math.max(peak, Math.abs(difference(t)))
+  assert.ok(halfRow / peak > 0.98)
+})
+
+test('wave limits simultaneous full depolarization and retains lesson comparison', () => {
+  let mostDepolarized = 0
+  for (let t = 0; t <= CELL_CYCLE_MS; t++) {
+    mostDepolarized = Math.max(mostDepolarized, CELL_XS.filter((_, i) => cellState(i, t) === -1).length)
+  }
+  assert.equal(mostDepolarized, 3)
+  assert.equal(cellState(4, 980), -1)
+  assert.equal(cellState(4, 1120), -1)
+  assert.ok(difference(980) < -1 && difference(1120) > 1)
+})
+test('fixed parallel scale bounds recordings throughout rotation', () => {
+  for (let t = 0; t <= CELL_CYCLE_MS; t += 5) {
+    const sources = cellSourcesAt(t)
+    for (let angle = 0; angle <= 180; angle += 5) {
+      const { a, b } = cellRecordingProbes(angle)
+      const value = cellPotential(a.x, a.y, sources) - cellPotential(b.x, b.y, sources)
+      assert.ok(Math.abs(value) <= CELL_PARALLEL_PEAK)
+    }
+  }
 })

@@ -1,6 +1,6 @@
 ﻿import { useEffect, useRef, useState } from 'react'
 import p5 from 'p5'
-import { CELL_COUNT, CELL_WIDTH, CELL_XS, ROW_Y, CELL_CANVAS_WIDTH, CELL_CANVAS_HEIGHT, CELL_CENTER_X, CELL_LEAD_RADIUS, cellLeadProbes, REST_BEFORE, STEP_DELAY, TRANS_DUR, APD, LAST_DEPOL_END, LAST_REPOL_END, CELL_CYCLE_MS, CENTERED_PULSE_MS, CELL_SMOOTHING_MS, cellState, cellSourcesAt, cellPotential, cellField } from '../../lib/cellRowModel'
+import { CELL_COUNT, CELL_WIDTH, CELL_XS, ROW_Y, CELL_CANVAS_WIDTH, CELL_CANVAS_HEIGHT, CELL_CENTER_X, CELL_LEAD_RADIUS, cellLeadProbes, cellRecordingProbes, REST_BEFORE, STEP_DELAY, TRANS_DUR, APD, LAST_DEPOL_END, LAST_REPOL_END, CELL_CYCLE_MS, CELL_PARALLEL_PEAK, CELL_SMOOTHING_MS, cellState, cellSourcesAt, cellPotential } from '../../lib/cellRowModel'
 import ModulePage from '../../components/ModulePage'
 import Explanation from '../../components/Explanation'
 import { useNavigate } from 'react-router-dom'
@@ -578,26 +578,11 @@ function SimCells() {
 
   const [playing, setPlaying] = useState(false)
   const [speed, setSpeed] = useState(1)
-  const [smoothing, setSmoothing] = useState(true)
-  const smoothingRef = useRef(smoothing)
-  useEffect(() => { smoothingRef.current = smoothing }, [smoothing])
-  const [showField, setShowField] = useState(false)
-  const [showEq, setShowEq] = useState(false)
-  const [showCurrent, setShowCurrent] = useState(false)
-  const [voltageRange, setVoltageRange] = useState(1)
-  const voltageRangeRef = useRef(voltageRange)
-  useEffect(() => { voltageRangeRef.current = voltageRange }, [voltageRange])
 
   const playingRef = useRef(playing)
   const speedRef = useRef(speed)
-  const showFieldRef = useRef(showField)
-  const showEqRef = useRef(showEq)
-  const showCurrentRef = useRef(showCurrent)
   useEffect(() => { playingRef.current = playing }, [playing])
   useEffect(() => { speedRef.current = speed }, [speed])
-  useEffect(() => { showFieldRef.current = showField }, [showField])
-  useEffect(() => { showEqRef.current = showEq }, [showEq])
-  useEffect(() => { showCurrentRef.current = showCurrent }, [showCurrent])
 
   // Scrubber plumbing — uncontrolled DOM node + refs, matching
   // LeadPlacementLab's pattern, so dragging never triggers a React re-render
@@ -636,166 +621,15 @@ function SimCells() {
       let dragEndpoint = null
       function probes() { return cellLeadProbes(leadAngleRef.current) }
 
-      const sAt = (i, t) => cellState(i, t, smoothingRef.current)
-      const chargesAt = t => cellSourcesAt(t, smoothingRef.current)
+      const sAt = (i, t) => cellState(i, t)
+      const chargesAt = t => cellSourcesAt(t)
       const volt = cellPotential
-      const fld = cellField
       function phaseName(t) {
-        const half = smoothingRef.current ? CELL_SMOOTHING_MS / 2 : 0
+        const half = CELL_SMOOTHING_MS / 2
         if (t <= REST_BEFORE - half || t >= LAST_REPOL_END + half) return 'resting (polarized)'
         if (t < REST_BEFORE + TRANS_DUR + APD - half) return 'depolarization'
         if (t < LAST_DEPOL_END + half) return 'activation and recovery'
         return 'repolarization'
-      }
-
-      const CR = 5
-      function traceField(sx, sy, source, cs) {
-        const pts = [[sx, sy]]
-        let x = sx, y = sy
-        const sign = source.q > 0 ? 1 : -1
-        const hasOpposite = cs.some(c => Math.sign(c.q) !== Math.sign(source.q) && Math.abs(c.q) > 0.05)
-        const maxSteps = hasOpposite ? 500 : 200
-        for (let i = 0; i < maxSteps; i++) {
-          const [ex, ey] = fld(x, y, cs)
-          const m = Math.hypot(ex, ey)
-          if (m < 1e-6) break
-          if (!hasOpposite && m < 0.03) break
-          x += sign * 3 * ex / m; y += sign * 3 * ey / m
-          let stop = false
-          for (const c of cs) {
-            if (c === source) continue
-            if (Math.sign(c.q) !== Math.sign(source.q) && Math.abs(c.q) > 0.05 && Math.hypot(x - c.x, y - c.y) < CR + 7) { stop = true; break }
-          }
-          pts.push([x, y])
-          if (stop) break
-        }
-        return pts
-      }
-
-      function traceAllLines(cs) {
-        const positives = cs.filter(c => c.q > 0.05)
-        const sources = positives.length > 0 ? positives : cs.filter(c => c.q < -0.05)
-        const lines = []
-        if (sources.length === 0) return lines
-        const nSeeds = Math.max(2, Math.min(6, Math.floor(40 / sources.length)))
-        for (const src of sources) {
-          for (let k = 0; k < nSeeds; k++) {
-            const a = (k / nSeeds) * Math.PI * 2
-            const pts = traceField(src.x + (CR + 5) * Math.cos(a), src.y + (CR + 5) * Math.sin(a), src, cs)
-            if (pts.length > 1) lines.push(src.q < 0 ? pts.slice().reverse() : pts)
-          }
-        }
-        return lines
-      }
-
-      function drawArrowheads(pts, alpha) {
-        const everyN = Math.max(1, Math.round(70 / 3))
-        for (let idx = everyN; idx < pts.length; idx += everyN) {
-          const [x0, y0] = pts[idx - 1], [x1, y1] = pts[idx]
-          const ang = Math.atan2(y1 - y0, x1 - x0), len = 5
-          p.push()
-          p.translate(x1, y1); p.rotate(ang)
-          p.noStroke(); p.fill(80, 140, 255, alpha)
-          p.triangle(0, 0, -len, len * 0.5, -len, -len * 0.5)
-          p.pop()
-        }
-      }
-
-      function drawFieldLines(lines) {
-        p.noFill(); p.stroke(80, 140, 255, 150); p.strokeWeight(1.3)
-        for (const pts of lines) {
-          p.beginShape()
-          pts.forEach(([px, py]) => p.vertex(px, py))
-          p.endShape()
-          drawArrowheads(pts, 180)
-        }
-      }
-
-      function drawCurrentLines(lines) {
-        p.push()
-        p.noFill(); p.stroke(52, 211, 153, 200); p.strokeWeight(1.6)
-        p.drawingContext.setLineDash([6, 7])
-        p.drawingContext.lineDashOffset = -(p.frameCount * 0.6) % 13
-        for (const pts of lines) {
-          p.beginShape()
-          pts.forEach(([px, py]) => p.vertex(px, py))
-          p.endShape()
-        }
-        p.drawingContext.setLineDash([])
-        p.pop()
-      }
-
-      // ── Equipotentials: marching squares over a per-frame voltage grid ──
-      const gsEq = 6, cols = Math.round(W / gsEq), rows = Math.round(H / gsEq)
-      const cornerV = new Float32Array((cols + 1) * (rows + 1))
-
-      function computeCornerGrid(cs) {
-        for (let j = 0; j <= rows; j++)
-          for (let i = 0; i <= cols; i++)
-            cornerV[j * (cols + 1) + i] = volt(i * gsEq, j * gsEq, cs)
-      }
-      const V = (i, j) => cornerV[j * (cols + 1) + i]
-
-      function pickLevels(cs) {
-        let maxV = 0
-        const step = 19
-        for (let x = step / 2; x < W; x += step) {
-          for (let y = step / 2; y < H; y += step) {
-            let near = false
-            for (const c of cs) if (Math.hypot(x - c.x, y - c.y) < CR * 3) { near = true; break }
-            if (near) continue
-            maxV = Math.max(maxV, Math.abs(volt(x, y, cs)))
-          }
-        }
-        if (maxV < 1) return []
-        const N2 = 6, levels = []
-        const lo = maxV * 0.1, hi = maxV * 0.55
-        for (let i = 0; i < N2; i++) {
-          const t = i / (N2 - 1)
-          const v = lo * Math.pow(hi / lo, t)
-          levels.push(v, -v)
-        }
-        return levels
-      }
-
-      function lerpPt(va, vb, pa, pb, level) {
-        const t = (level - va) / (vb - va)
-        return [pa[0] + t * (pb[0] - pa[0]), pa[1] + t * (pb[1] - pa[1])]
-      }
-
-      function drawContour(level) {
-        for (let j = 0; j < rows; j++) {
-          for (let i = 0; i < cols; i++) {
-            const x0 = i * gsEq, y0 = j * gsEq
-            const v00 = V(i, j), v10 = V(i + 1, j), v11 = V(i + 1, j + 1), v01 = V(i, j + 1)
-            const above = [v00 > level, v10 > level, v11 > level, v01 > level]
-            if (above[0] === above[1] && above[1] === above[2] && above[2] === above[3]) continue
-            const cTL = [x0, y0], cTR = [x0 + gsEq, y0], cBR = [x0 + gsEq, y0 + gsEq], cBL = [x0, y0 + gsEq]
-            const crosses = []
-            if (above[0] !== above[1]) crosses.push(lerpPt(v00, v10, cTL, cTR, level))
-            if (above[1] !== above[2]) crosses.push(lerpPt(v10, v11, cTR, cBR, level))
-            if (above[2] !== above[3]) crosses.push(lerpPt(v01, v11, cBL, cBR, level))
-            if (above[3] !== above[0]) crosses.push(lerpPt(v00, v01, cTL, cBL, level))
-            if (crosses.length === 2) {
-              p.line(crosses[0][0], crosses[0][1], crosses[1][0], crosses[1][1])
-            } else if (crosses.length === 4) {
-              if (above[0]) {
-                p.line(crosses[0][0], crosses[0][1], crosses[3][0], crosses[3][1])
-                p.line(crosses[1][0], crosses[1][1], crosses[2][0], crosses[2][1])
-              } else {
-                p.line(crosses[0][0], crosses[0][1], crosses[1][0], crosses[1][1])
-                p.line(crosses[2][0], crosses[2][1], crosses[3][0], crosses[3][1])
-              }
-            }
-          }
-        }
-      }
-
-      function drawEquipotentials(cs) {
-        computeCornerGrid(cs)
-        const levels = pickLevels(cs)
-        p.stroke(110, 220, 140, 150); p.strokeWeight(1)
-        for (const level of levels) drawContour(level)
       }
 
       function lerpColor(a, b, t) {
@@ -870,26 +704,21 @@ function SimCells() {
         p.line(CX - 5, ROW_Y, CX + 5, ROW_Y)
         p.line(CX, ROW_Y - 5, CX, ROW_Y + 5)
         const cs = chargesAt(t)
-        const needsLines = showFieldRef.current || showCurrentRef.current
-        const lines = needsLines ? traceAllLines(cs) : []
-        if (showFieldRef.current) drawFieldLines(lines)
-        if (showCurrentRef.current) drawCurrentLines(lines)
-        if (showEqRef.current) drawEquipotentials(cs)
-
         // Cells
         for (let i = 0; i < N; i++) {
           const ti = REST_BEFORE + i * STEP_DELAY, depolEnd = ti + TRANS_DUR
           const repolStart = depolEnd + APD, repolEnd = repolStart + TRANS_DUR
           const s = sAt(i, t)
-          const half = smoothingRef.current ? CELL_SMOOTHING_MS / 2 : 0
+          const half = CELL_SMOOTHING_MS / 2
           const transitioning = (t > ti - half && t < depolEnd + half) || (t > repolStart - half && t < repolEnd + half)
           const transitionSign = (t > repolStart - half && t < repolEnd + half) ? 1 : -1
           drawCell(xs[i], s, transitioning, transitionSign)
         }
 
         // Probes — actual electrode voltage readout, driving ΔV
-        const vA = volt(probeA.x, probeA.y, cs)
-        const vB = volt(probeB.x, probeB.y, cs)
+        const recording = cellRecordingProbes(leadAngleRef.current)
+        const vA = volt(recording.a.x, recording.a.y, cs)
+        const vB = volt(recording.b.x, recording.b.y, cs)
         const dv = vA - vB
 
         p.strokeWeight(1); p.stroke(150, 150, 150, 70)
@@ -918,19 +747,17 @@ function SimCells() {
         // electrode-reading arrow and the "ECG output" strip chart.
         const steps = 120
         const dvSamples = new Array(steps + 1)
-        let maxDV = 1e-6
         for (let k = 0; k <= steps; k++) {
           const ts = (k / steps) * TOTAL_CYCLE
           const csk = chargesAt(ts)
-          const dvk = volt(probeA.x, probeA.y, csk) - volt(probeB.x, probeB.y, csk)
+          const dvk = volt(recording.a.x, recording.a.y, csk) - volt(recording.b.x, recording.b.y, csk)
           dvSamples[k] = dvk
-          maxDV = Math.max(maxDV, Math.abs(dvk))
         }
 
         // Electrode reading vector, drawn above the row — how much of the
         // field the current probe pair actually picks up, so dragging A/B
         // visibly changes the arrow.
-        const rangeMv = voltageRangeRef.current
+        const rangeMv = modelMillivolts(CELL_PARALLEL_PEAK)
         const normDV = Math.max(-1, Math.min(1, modelMillivolts(dv) / rangeMv))
         const arrowY = ROW_Y - CELL_H / 2 - 55
         const maxLen = 130
@@ -983,7 +810,7 @@ function SimCells() {
           p.stroke(255, 255, 255, 30); p.strokeWeight(1)
           p.line(plotX, y, plotX + plotW, y)
           p.noStroke(); p.fill(200, 200, 200, 180)
-          p.text(`${value > 0 ? '+' : ''}${value} mV`, plotX - 5, y)
+          p.text(`${value > 0 ? '+' : ''}${value.toFixed(3)} mV`, plotX - 5, y)
         }
         p.noFill(); p.stroke(245, 158, 11, 200); p.strokeWeight(1.5)
         p.beginShape()
@@ -997,8 +824,7 @@ function SimCells() {
         p.line(cursorX, plotTop, cursorX, plotBottom)
         p.fill(245, 158, 11, 200); p.noStroke()
         p.textAlign(p.LEFT, p.BOTTOM); p.textSize(9)
-        const offScale = modelMillivolts(maxDV) > rangeMv
-        p.text(offScale ? 'Off scale: choose a larger range' : 'Full-cycle ECG output ΔV', chX + 5, chY + chH - 4)
+        p.text('Full-cycle ECG output ΔV', chX + 5, chY + chH - 4)
       }
 
       p.mousePressed = () => {
@@ -1049,30 +875,8 @@ function SimCells() {
             </button>
           ))}
         </div>
-        <div className="flex-1" />
-        <button
-          onClick={() => setShowField(v => !v)}
-          className={`shrink-0 px-3 py-1 rounded-full border text-xs transition-colors cursor-pointer ${showField ? 'bg-blue-900/50 border-blue-700 text-blue-300' : 'border-gray-700 text-gray-500 hover:text-gray-400'}`}
-        >
-          Field lines {showField ? 'ON' : 'OFF'}
-        </button>
-        <button
-          onClick={() => setShowEq(v => !v)}
-          className={`shrink-0 px-3 py-1 rounded-full border text-xs transition-colors cursor-pointer ${showEq ? 'bg-teal-900/50 border-teal-700 text-teal-300' : 'border-gray-700 text-gray-500 hover:text-gray-400'}`}
-        >
-          Equipotentials {showEq ? 'ON' : 'OFF'}
-        </button>
-        <button
-          onClick={() => setShowCurrent(v => !v)}
-          className={`shrink-0 px-3 py-1 rounded-full border text-xs transition-colors cursor-pointer ${showCurrent ? 'bg-emerald-900/50 border-emerald-700 text-emerald-300' : 'border-gray-700 text-gray-500 hover:text-gray-400'}`}
-        >
-          Current lines {showCurrent ? 'ON' : 'OFF'}
-        </button>
       </SimBar>
       <SimBar>
-        <button onClick={() => jumpTo(0)} className="px-3 py-1 rounded border border-gray-700 text-gray-300">Start</button>
-        <button onClick={() => jumpTo(CENTERED_PULSE_MS)} className="px-3 py-1 rounded border border-gray-700 text-gray-300">Mid-cycle</button>
-        <button onClick={() => rotateLead(0)} className="px-3 py-1 rounded border border-gray-700 text-gray-300">Reset lead</button>
         <span><span className="text-blue-400">+ outside: resting (polarized)</span> · <span className="text-amber-400">− outside: depolarized</span></span>
       </SimBar>
       <SimBar>
@@ -1106,23 +910,6 @@ function SimCells() {
         <span ref={scrubLabelRef} className="text-xs font-mono text-gray-500 tabular-nums w-28 text-right">
           0 / {CELL_CYCLE_MS} ms
         </span>
-      </SimBar>
-      <SimBar>
-        <button onClick={() => setSmoothing(v => !v)}
-          className={`shrink-0 px-3 py-1 rounded-full border text-xs ${smoothing ? 'bg-teal-900/50 border-teal-700 text-teal-300' : 'border-gray-700 text-gray-500'}`}>
-          Smoothing {smoothing ? 'ON' : 'OFF'}
-        </button>
-        <span>Smoothing averages nearby stages of the cycle for the cells, field, and readings.</span>
-      </SimBar>
-      <SimBar>
-        <label className="flex items-center gap-2">
-          Voltage range
-          <select aria-label="Voltage range" value={voltageRange} onChange={e => setVoltageRange(Number(e.target.value))}
-            className="bg-gray-900 border border-gray-700 rounded px-2 py-1 text-gray-300">
-            {[1, 2, 5, 10].map(value => <option key={value} value={value}>±{value} mV</option>)}
-          </select>
-        </label>
-        <span>Graph and arrow keep this scale as the lead rotates. Readouts show the full values.</span>
       </SimBar>
     </CanvasWrap>
   )
@@ -1370,16 +1157,8 @@ export default function PhysicsFoundations() {
       {active === '2C' && (
         <Section label="2C" title="Compare cell states and extracellular recordings">
           <p className="text-xs text-gray-400 leading-snug mb-2">
-            Ten cells are shown in a row. Blue cells with exterior + signs are resting (polarized);
-            amber cells with exterior − signs are depolarized. The signs indicate membrane polarity;
-            opposite charges on the inner membrane surface are not shown.
-            Use Play, Pause, and Scrub to inspect their states. Start and Mid-cycle select two instants;
-            Reset lead restores a horizontal lead.
-            Drag either electrode to rotate the green (A) and purple (B) pair together around the row’s midpoint.
-            Their spacing stays fixed. Lead rotation and the angle buttons select the same orientation.
-            The graph shows ΔV = V(A) − V(B) over a full cycle; its cursor and the amber arrow mark the selected instant.
-            The axis always passes through the midpoint; dragging snaps near horizontal and vertical. Use Voltage range to set the graph scale. Field lines, equipotentials, and
-            current lines can be toggled below the animation.
+            Drag either electrode to rotate the lead. Use Play or Scrub to follow the wave.
+            Electrode positions are schematic; recordings are calculated farther from the cells.
           </p>
 
           <SimCells />
@@ -1389,7 +1168,7 @@ export default function PhysicsFoundations() {
             A uniformly resting row has no sources in this model: each probe reads zero wherever it is placed.
             A uniformly depolarized row would also have no sources, but this short traveling pulse
             never depolarizes all ten cells at once.
-            <br /><br />At Mid-cycle, a depolarized patch has matching outer regions on either side.
+            <br /><br />At 1090 ms, a depolarized patch has matching outer regions on either side.
             With the probes in their initial symmetric positions, their potentials are equal and
             nonzero, so ΔV is zero. For this centered symmetric patch, opposite probes have equal potentials at every lead angle.
             At other instants, a vertical lead gives zero while a horizontal lead can reveal a signal.
@@ -1398,8 +1177,11 @@ export default function PhysicsFoundations() {
             A single boundary between resting and depolarized regions makes a dipole contribution;
             an entire pattern of activity need not have a nonzero net dipole.
             Smoothing uses a centered 90 ms average of cell states before calculating sources, so the
-            colors, field, probe readings, and trace stay consistent. It does not add playback lag.
-            The longer depolarized interval makes the two main phases easier to compare in the default lead.
+            colors, probe readings, and trace stay consistent. It does not add playback lag.
+            Recording points lie about five row lengths from the midpoint, reducing the effect of a boundary approaching an electrode.
+            The graph scale stays fixed at the peak magnitude for a parallel lead.
+            Neighboring cells transition at staggered times; the shorter depolarized plateau reduces the number fully depolarized together.
+            The mV scale uses a fixed illustrative source strength; it does not predict a human ECG amplitude.
             Activation and recovery both contribute to this full-cycle recording.
             This is a simplified cable source model with illustrative timing, not a full cardiac ECG.
           </Callout>
