@@ -1,6 +1,6 @@
 ﻿import { useEffect, useRef, useState } from 'react'
 import p5 from 'p5'
-import { CELL_COUNT, CELL_WIDTH, CELL_XS, ROW_Y, REST_BEFORE, STEP_DELAY, TRANS_DUR, APD, LAST_DEPOL_END, LAST_REPOL_END, CELL_CYCLE_MS, CENTERED_PULSE_MS, CELL_SMOOTHING_MS, cellState, cellSourcesAt, cellPotential, cellField } from '../../lib/cellRowModel'
+import { CELL_COUNT, CELL_WIDTH, CELL_XS, ROW_Y, CELL_CANVAS_WIDTH, CELL_CANVAS_HEIGHT, CELL_CENTER_X, CELL_LEAD_RADIUS, cellLeadProbes, REST_BEFORE, STEP_DELAY, TRANS_DUR, APD, LAST_DEPOL_END, LAST_REPOL_END, CELL_CYCLE_MS, CENTERED_PULSE_MS, CELL_SMOOTHING_MS, cellState, cellSourcesAt, cellPotential, cellField } from '../../lib/cellRowModel'
 import ModulePage from '../../components/ModulePage'
 import Explanation from '../../components/Explanation'
 import { useNavigate } from 'react-router-dom'
@@ -602,7 +602,13 @@ function SimCells() {
   // Scrubber plumbing — uncontrolled DOM node + refs, matching
   // LeadPlacementLab's pattern, so dragging never triggers a React re-render
   // during the p5 draw loop.
-  const resetProbesRef = useRef(() => {})
+  const [leadAngle, setLeadAngle] = useState(0)
+  const leadAngleRef = useRef(0)
+  const rotateLead = degrees => {
+    const normalized = ((Math.round(degrees) % 360) + 360) % 360
+    leadAngleRef.current = normalized
+    setLeadAngle(normalized)
+  }
   const simTimeRef = useRef(0)
   const jumpTo = time => {
     playingRef.current = false
@@ -616,9 +622,9 @@ function SimCells() {
   useEffect(() => {
     // Scaled ~0.78x from the original 720×480 (same uniform-factor rule as
     // Sim2A — see its comment).
-    const W = 560, H = 375
+    const W = CELL_CANVAS_WIDTH, H = CELL_CANVAS_HEIGHT
     const N = CELL_COUNT, CELL_W = CELL_WIDTH, CELL_H = 47
-    const CX = W / 2
+    const CX = CELL_CENTER_X
     const TOTAL_CYCLE = CELL_CYCLE_MS
 
     let cancelled = false
@@ -626,26 +632,9 @@ function SimCells() {
     const sketch = (p) => {
       const xs = CELL_XS
 
-      // Two draggable probes — the actual "electrodes" reading the voltage
-      // this changing charge distribution produces, so ΔV isn't an
-      // unexplained number: it's V(A) − V(B) measured at two real points.
-      const PR = 7
-      let probeA = { x: xs[0] - 31, y: ROW_Y - CELL_H / 2 - 25 }
-      let probeB = { x: xs[N - 1] + 31, y: ROW_Y - CELL_H / 2 - 25 }
-      resetProbesRef.current = () => {
-        probeA = { x: xs[0] - 31, y: ROW_Y - CELL_H / 2 - 25 }
-        probeB = { x: xs[N - 1] + 31, y: ROW_Y - CELL_H / 2 - 25 }
-      }
-      let dragA = false, dragB = false
-
-      // A "perpendicular" (zero) reading requires the two probes to be
-      // exact mirror images across the row (same x, equal-and-opposite
-      // distance from ROW_Y) — every cell is then equidistant from both,
-      // so V(A)=V(B) exactly. That's a precise target to hit by hand, so
-      // while dragging one probe close to its exact mirror point (relative
-      // to the OTHER probe's current position), snap it there instead of
-      // leaving the reading only approximately zero.
-      const SNAP_RADIUS = 18
+      const PR = 9
+      let dragEndpoint = null
+      function probes() { return cellLeadProbes(leadAngleRef.current) }
 
       const sAt = (i, t) => cellState(i, t, smoothingRef.current)
       const chargesAt = t => cellSourcesAt(t, smoothingRef.current)
@@ -875,6 +864,11 @@ function SimCells() {
 
         p.background(15, 20, 30)
 
+        const { a: probeA, b: probeB } = probes()
+        p.noFill(); p.stroke(148, 163, 184, 55); p.strokeWeight(1)
+        p.circle(CX, ROW_Y, CELL_LEAD_RADIUS * 2)
+        p.line(CX - 5, ROW_Y, CX + 5, ROW_Y)
+        p.line(CX, ROW_Y - 5, CX, ROW_Y + 5)
         const cs = chargesAt(t)
         const needsLines = showFieldRef.current || showCurrentRef.current
         const lines = needsLines ? traceAllLines(cs) : []
@@ -908,11 +902,14 @@ function SimCells() {
         p.fill(168, 85, 247); p.stroke(168, 85, 247, 180)
         p.circle(probeB.x, probeB.y, PR * 2)
 
-        p.noStroke(); p.textAlign(p.CENTER, p.BOTTOM); p.textSize(10)
+        p.noStroke(); p.textAlign(p.CENTER, p.CENTER); p.textSize(11)
+        const labelY = probe => Math.abs(probe.y - ROW_Y) < 60
+          ? probe.y - 24
+          : probe.y + (ROW_Y - probe.y) * 0.14
         p.fill(52, 211, 153, 220)
-        p.text(`A  ${formatMillivolts(modelMillivolts(vA))}`, probeA.x, probeA.y - PR - 3)
+        p.text(`A  ${formatMillivolts(modelMillivolts(vA))}`, probeA.x, labelY(probeA))
         p.fill(168, 85, 247, 220)
-        p.text(`B  ${formatMillivolts(modelMillivolts(vB))}`, probeB.x, probeB.y - PR - 3)
+        p.text(`B  ${formatMillivolts(modelMillivolts(vB))}`, probeB.x, labelY(probeB))
 
         // Sample ΔV(t) as currently measured by the dragged probes, over one
         // full cycle — this is what actually depends on electrode placement
@@ -970,12 +967,12 @@ function SimCells() {
         p.fill(168, 85, 247, 220); p.text(`V(B) = ${formatMillivolts(modelMillivolts(vB))}`, 18, H - 44)
         p.fill(255, 255, 255, 210); p.text(`ΔV = ${formatMillivolts(modelMillivolts(dv))}`, 18, H - 28)
         p.fill(255, 255, 255, 60); p.textSize(9)
-        p.text('drag A/B to probe the field', 18, H - 14)
+        p.text('drag either electrode to rotate', 18, H - 14)
 
         // "ECG output" strip chart — the ΔV(t) actually seen by the current
         // electrode pair, so it visibly changes shape as A/B are dragged
         // (unlike the underlying dipole, which is fixed).
-        const chW = 205, chH = 100, chX = W - chW - 9, chY = 9
+        const chW = 185, chH = 100, chX = W - chW - 9, chY = 9
         const plotX = chX + 48, plotW = chW - 54
         const plotTop = chY + 16, plotBottom = chY + chH - 25
         const plotMid = (plotTop + plotBottom) / 2, plotHalf = (plotBottom - plotTop) / 2
@@ -1006,28 +1003,20 @@ function SimCells() {
 
       p.mousePressed = () => {
         if (p.mouseX < 0 || p.mouseX > W || p.mouseY < 0 || p.mouseY > H) return
-        if (Math.hypot(p.mouseX - probeA.x, p.mouseY - probeA.y) < PR + 6) { dragA = true; return }
-        if (Math.hypot(p.mouseX - probeB.x, p.mouseY - probeB.y) < PR + 6) dragB = true
+        const { a, b } = probes()
+        if (Math.hypot(p.mouseX - a.x, p.mouseY - a.y) < PR + 8) dragEndpoint = 'a'
+        else if (Math.hypot(p.mouseX - b.x, p.mouseY - b.y) < PR + 8) dragEndpoint = 'b'
       }
       p.mouseDragged = () => {
-        if (dragA) {
-          const mirrorX = probeB.x, mirrorY = 2 * ROW_Y - probeB.y
-          if (Math.hypot(p.mouseX - mirrorX, p.mouseY - mirrorY) < SNAP_RADIUS) {
-            probeA.x = mirrorX; probeA.y = mirrorY
-          } else {
-            probeA.x = p.mouseX; probeA.y = p.mouseY
-          }
-        }
-        if (dragB) {
-          const mirrorX = probeA.x, mirrorY = 2 * ROW_Y - probeA.y
-          if (Math.hypot(p.mouseX - mirrorX, p.mouseY - mirrorY) < SNAP_RADIUS) {
-            probeB.x = mirrorX; probeB.y = mirrorY
-          } else {
-            probeB.x = p.mouseX; probeB.y = p.mouseY
-          }
-        }
+        if (!dragEndpoint || Math.hypot(p.mouseX - CX, p.mouseY - ROW_Y) < 10) return
+        const direction = dragEndpoint === 'a' ? -1 : 1
+        let degrees = Math.atan2(direction * (p.mouseY - ROW_Y), direction * (p.mouseX - CX)) * 180 / Math.PI
+        const nearestQuarter = Math.round(degrees / 90) * 90
+        if (Math.abs(degrees - nearestQuarter) < 4) degrees = nearestQuarter
+        rotateLead(degrees)
       }
-      p.mouseReleased = () => { dragA = false; dragB = false }
+      p.mouseReleased = () => { dragEndpoint = null }
+
     }
 
     const inst = new p5(sketch, containerRef.current)
@@ -1083,8 +1072,19 @@ function SimCells() {
       <SimBar>
         <button onClick={() => jumpTo(0)} className="px-3 py-1 rounded border border-gray-700 text-gray-300">Start</button>
         <button onClick={() => jumpTo(CENTERED_PULSE_MS)} className="px-3 py-1 rounded border border-gray-700 text-gray-300">Mid-cycle</button>
-        <button onClick={() => resetProbesRef.current()} className="px-3 py-1 rounded border border-gray-700 text-gray-300">Reset probes</button>
+        <button onClick={() => rotateLead(0)} className="px-3 py-1 rounded border border-gray-700 text-gray-300">Reset lead</button>
         <span><span className="text-blue-400">+ outside: resting (polarized)</span> · <span className="text-amber-400">− outside: depolarized</span></span>
+      </SimBar>
+      <SimBar>
+        <label htmlFor="cell-lead-angle" className="shrink-0">Lead rotation</label>
+        <input id="cell-lead-angle" type="range" min={0} max={360} step={1}
+          value={leadAngle} onChange={e => rotateLead(Number(e.target.value))}
+          className="flex-1 min-w-[120px] accent-teal-500" />
+        <span className="font-mono w-10 text-right">{leadAngle}°</span>
+        {[0, 90, 180, 270].map(angle => (
+          <button key={angle} onClick={() => rotateLead(angle)}
+            className={`px-2 py-1 rounded border ${leadAngle === angle ? 'border-teal-600 text-teal-300' : 'border-gray-700 text-gray-400'}`}>{angle}°</button>
+        ))}
       </SimBar>
       <SimBar>
         <span className="text-xs uppercase tracking-widest text-gray-600 shrink-0">Scrub</span>
@@ -1122,7 +1122,7 @@ function SimCells() {
             {[1, 2, 5, 10].map(value => <option key={value} value={value}>±{value} mV</option>)}
           </select>
         </label>
-        <span>Graph and arrow keep this scale as probes move. Readouts show the full values.</span>
+        <span>Graph and arrow keep this scale as the lead rotates. Readouts show the full values.</span>
       </SimBar>
     </CanvasWrap>
   )
@@ -1374,11 +1374,11 @@ export default function PhysicsFoundations() {
             amber cells with exterior − signs are depolarized. The signs indicate membrane polarity;
             opposite charges on the inner membrane surface are not shown.
             Use Play, Pause, and Scrub to inspect their states. Start and Mid-cycle select two instants;
-            Reset probes restores the initial electrode positions.
-            Drag the green (A) and purple (B) probes to sample extracellular potential.
+            Reset lead restores a horizontal lead.
+            Drag either electrode to rotate the green (A) and purple (B) pair together around the row’s midpoint.
+            Their spacing stays fixed. Lead rotation and the angle buttons select the same orientation.
             The graph shows ΔV = V(A) − V(B) over a full cycle; its cursor and the amber arrow mark the selected instant.
-            Probes snap into a mirrored arrangement when placed at matching positions above and below
-            the row. Use Voltage range to set the graph scale. Field lines, equipotentials, and
+            The axis always passes through the midpoint; dragging snaps near horizontal and vertical. Use Voltage range to set the graph scale. Field lines, equipotentials, and
             current lines can be toggled below the animation.
           </p>
 
@@ -1391,7 +1391,8 @@ export default function PhysicsFoundations() {
             never depolarizes all ten cells at once.
             <br /><br />At Mid-cycle, a depolarized patch has matching outer regions on either side.
             With the probes in their initial symmetric positions, their potentials are equal and
-            nonzero, so ΔV is zero. Moving one probe can reveal a voltage difference at the same instant.
+            nonzero, so ΔV is zero. For this centered symmetric patch, opposite probes have equal potentials at every lead angle.
+            At other instants, a vertical lead gives zero while a horizontal lead can reveal a signal.
             This is cancellation in a particular measurement, not the absence of extracellular sources.
             <br /><br />The two boundaries of a centered patch make opposing dipole contributions.
             A single boundary between resting and depolarized regions makes a dipole contribution;
@@ -1399,6 +1400,7 @@ export default function PhysicsFoundations() {
             Smoothing uses a centered 90 ms average of cell states before calculating sources, so the
             colors, field, probe readings, and trace stay consistent. It does not add playback lag.
             The longer depolarized interval makes the two main phases easier to compare in the default lead.
+            Activation and recovery both contribute to this full-cycle recording.
             This is a simplified cable source model with illustrative timing, not a full cardiac ECG.
           </Callout>
 

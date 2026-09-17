@@ -1,9 +1,10 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { CELL_XS, ROW_Y, CELL_CYCLE_MS, CENTERED_PULSE_MS, CELL_SMOOTHING_MS, cellState, sourcesForStates, cellSourcesAt, cellPotential, cellField } from '../src/lib/cellRowModel.js'
+import { CELL_XS, ROW_Y, CELL_CENTER_X, CELL_LEAD_RADIUS, cellLeadProbes, CELL_CYCLE_MS, CENTERED_PULSE_MS, CELL_SMOOTHING_MS, cellState, sourcesForStates, cellSourcesAt, cellPotential, cellField } from '../src/lib/cellRowModel.js'
 
-const a = [CELL_XS[0] - 31, ROW_Y - 48.5]
-const b = [CELL_XS[9] + 31, ROW_Y - 48.5]
+const defaultProbes = cellLeadProbes(0)
+const a = [defaultProbes.a.x, defaultProbes.a.y]
+const b = [defaultProbes.b.x, defaultProbes.b.y]
 const difference = (t, first = a, second = b) => {
   const sources = cellSourcesAt(t)
   return cellPotential(...first, sources) - cellPotential(...second, sources)
@@ -84,4 +85,29 @@ test('averaging reduces sharp cell-to-cell changes', () => {
     return values.slice(1, -1).reduce((sum, v, i) => sum + (values[i] - 2 * v + values[i + 2]) ** 2, 0)
   }
   assert.ok(roughness(true) < roughness(false) / 2)
+})
+
+test('rotation fixes midpoint, radius and electrode separation at every angle', () => {
+  for (let angle = 0; angle < 360; angle++) {
+    const { a, b } = cellLeadProbes(angle)
+    assert.ok(Math.abs((a.x + b.x) / 2 - CELL_CENTER_X) < 1e-10)
+    assert.ok(Math.abs((a.y + b.y) / 2 - ROW_Y) < 1e-10)
+    assert.ok(Math.abs(Math.hypot(a.x - CELL_CENTER_X, a.y - ROW_Y) - CELL_LEAD_RADIUS) < 1e-10)
+    assert.ok(Math.abs(Math.hypot(a.x - b.x, a.y - b.y) - 2 * CELL_LEAD_RADIUS) < 1e-10)
+  }
+})
+test('vertical lead cancels, half-turn reverses polarity, centered pulse cancels at every angle', () => {
+  const voltage = (angle, time) => {
+    const { a, b } = cellLeadProbes(angle)
+    const sources = cellSourcesAt(time)
+    return cellPotential(a.x, a.y, sources) - cellPotential(b.x, b.y, sources)
+  }
+  for (let t = 0; t <= CELL_CYCLE_MS; t += 10) {
+    assert.ok(Math.abs(voltage(90, t)) < 1e-10)
+    assert.ok(Math.abs(voltage(180, t) + voltage(0, t)) < 1e-10)
+  }
+  for (let angle = 0; angle < 360; angle += 5) {
+    assert.ok(Math.abs(voltage(angle, CENTERED_PULSE_MS)) < 1e-9)
+  }
+  assert.ok(Math.abs(voltage(0, 450)) > 100)
 })

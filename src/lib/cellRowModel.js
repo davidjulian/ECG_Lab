@@ -13,9 +13,24 @@ export const LAST_DEPOL_END = REST_BEFORE + (CELL_COUNT - 1) * STEP_DELAY + TRAN
 export const LAST_REPOL_END = LAST_DEPOL_END + APD + TRANS_DUR
 export const CELL_CYCLE_MS = LAST_REPOL_END + 500
 export const CENTERED_PULSE_MS = REST_BEFORE + ((CELL_COUNT - 1) * STEP_DELAY + 2 * TRANS_DUR + APD) / 2
-export const CELL_WIDTH = (560 - 2 * 54 - (CELL_COUNT - 1) * 6) / CELL_COUNT
-export const CELL_XS = Array.from({ length: CELL_COUNT }, (_, i) => 54 + CELL_WIDTH / 2 + i * (CELL_WIDTH + 6))
-export const ROW_Y = 375 * 0.54
+export const CELL_CANVAS_WIDTH = 720
+export const CELL_CANVAS_HEIGHT = 480
+export const CELL_CENTER_X = CELL_CANVAS_WIDTH / 2
+export const ROW_Y = CELL_CANVAS_HEIGHT / 2
+export const CELL_WIDTH = (320 - (CELL_COUNT - 1) * 6) / CELL_COUNT
+export const CELL_XS = Array.from({ length: CELL_COUNT }, (_, i) => CELL_CENTER_X - 160 + CELL_WIDTH / 2 + i * (CELL_WIDTH + 6))
+export const CELL_LEAD_RADIUS = 205
+
+// Fixed, opposite endpoints: only the angle changes. At 0°, A is on the left.
+export function cellLeadProbes(degrees) {
+  const angle = degrees * Math.PI / 180
+  const dx = CELL_LEAD_RADIUS * Math.cos(angle)
+  const dy = CELL_LEAD_RADIUS * Math.sin(angle)
+  return {
+    a: { x: CELL_CENTER_X - dx, y: ROW_Y - dy },
+    b: { x: CELL_CENTER_X + dx, y: ROW_Y + dy },
+  }
+}
 
 const smooth = f => f * f * (3 - 2 * f)
 function integratedStep(x) {
