@@ -386,7 +386,7 @@ function AnatomyDiagram({ selected, onSelect }) {
           <path
             d="M 62 42 Q 62 28 80 26 Q 98 24 98 42 Q 98 75 70 88 Q 58 80 58 65 Z"
             fill={fill('ra', '#1e3a2e', '#166534')}
-            stroke={active === 'ra' ? '#4ade80' : '#374151'}
+            stroke={active === 'ra' ? '#4ade80' : '#94a3b8'}
             strokeWidth="1.5"
             {...ev('ra')}
           />
@@ -396,7 +396,7 @@ function AnatomyDiagram({ selected, onSelect }) {
           <path
             d="M 102 42 Q 102 24 120 26 Q 138 28 138 42 Q 138 65 130 80 Q 118 88 102 75 Z"
             fill={fill('la', '#1e3a2e', '#166534')}
-            stroke={active === 'la' ? '#4ade80' : '#374151'}
+            stroke={active === 'la' ? '#4ade80' : '#94a3b8'}
             strokeWidth="1.5"
             {...ev('la')}
           />
@@ -406,7 +406,7 @@ function AnatomyDiagram({ selected, onSelect }) {
           <circle
             cx="70" cy="18" r="7"
             fill={fill('sa', '#1e2a4e', '#1d4ed8')}
-            stroke={active === 'sa' ? '#60a5fa' : '#374151'}
+            stroke={active === 'sa' ? '#60a5fa' : '#94a3b8'}
             strokeWidth="1.5"
             {...ev('sa')}
           />
@@ -416,7 +416,7 @@ function AnatomyDiagram({ selected, onSelect }) {
           <circle
             cx="100" cy="97" r="7"
             fill={fill('av', '#2d1a4e', '#6d28d9')}
-            stroke={active === 'av' ? '#a78bfa' : '#374151'}
+            stroke={active === 'av' ? '#a78bfa' : '#94a3b8'}
             strokeWidth="1.5"
             {...ev('av')}
           />
@@ -434,7 +434,7 @@ function AnatomyDiagram({ selected, onSelect }) {
           <path
             d="M 97 119 Q 80 130 65 148 Q 58 158 62 170"
             fill="none"
-            stroke={fill('rbundle', '#4b5563', '#db2777')}
+            stroke={fill('rbundle', '#94a3b8', '#db2777')}
             strokeWidth="2"
             {...ev('rbundle')} style={{ cursor: 'pointer' }}
           />
@@ -444,7 +444,7 @@ function AnatomyDiagram({ selected, onSelect }) {
           <path
             d="M 103 119 Q 120 130 135 148 Q 142 158 138 170"
             fill="none"
-            stroke={fill('lbundle', '#4b5563', '#db2777')}
+            stroke={fill('lbundle', '#94a3b8', '#db2777')}
             strokeWidth="2"
             {...ev('lbundle')} style={{ cursor: 'pointer' }}
           />
@@ -452,11 +452,11 @@ function AnatomyDiagram({ selected, onSelect }) {
 
           {/* ── Purkinje fan hints (apex region) ── */}
           <path d="M 62 170 Q 70 195 85 210 Q 95 222 100 228"
-            fill="none" stroke="#4b5563" strokeWidth="1" strokeDasharray="1.5,1.5"
+            fill="none" stroke="#94a3b8" strokeWidth="1" strokeDasharray="1.5,1.5"
             {...ev('purkinje')} style={{ cursor: 'pointer' }}
           />
           <path d="M 138 170 Q 130 195 115 210 Q 105 222 100 228"
-            fill="none" stroke="#4b5563" strokeWidth="1" strokeDasharray="1.5,1.5"
+            fill="none" stroke="#94a3b8" strokeWidth="1" strokeDasharray="1.5,1.5"
             {...ev('purkinje')} style={{ cursor: 'pointer' }}
           />
           <text x="100" y="240" textAnchor="middle" fill="#6b7280" fontSize="4.5" pointerEvents="none">Purkinje</text>
@@ -465,7 +465,7 @@ function AnatomyDiagram({ selected, onSelect }) {
           <path
             d="M 58 95 Q 42 110 40 140 Q 38 170 60 190 Q 80 210 100 228 Q 98 200 95 175 Q 90 148 88 125 Q 80 105 70 97 Z"
             fill={fill('rv', '#1f2937', '#7c2d12')}
-            stroke={active === 'rv' ? '#fb923c' : '#374151'}
+            stroke={active === 'rv' ? '#fb923c' : '#94a3b8'}
             strokeWidth="1.5"
             {...ev('rv')}
           />
@@ -475,7 +475,7 @@ function AnatomyDiagram({ selected, onSelect }) {
           <path
             d="M 142 95 Q 158 110 160 140 Q 162 170 140 190 Q 120 210 100 228 Q 102 200 105 175 Q 110 148 112 125 Q 120 105 130 97 Z"
             fill={fill('lv', '#1f2937', '#7c2d12')}
-            stroke={active === 'lv' ? '#fb923c' : '#374151'}
+            stroke={active === 'lv' ? '#fb923c' : '#94a3b8'}
             strokeWidth="1.5"
             {...ev('lv')}
           />
@@ -485,7 +485,7 @@ function AnatomyDiagram({ selected, onSelect }) {
           <path
             d="M 88 125 Q 92 148 95 175 Q 97 200 100 228 Q 103 200 105 175 Q 108 148 112 125 Q 105 110 100 107 Q 95 110 88 125 Z"
             fill={fill('septum', '#111827', '#1e3a5f')}
-            stroke={active === 'septum' ? '#38bdf8' : '#374151'}
+            stroke={active === 'septum' ? '#38bdf8' : '#94a3b8'}
             strokeWidth="1"
             {...ev('septum')}
           />
@@ -1431,7 +1431,7 @@ function TraceCanvas({ clockRef, valueAt, xDomain, yDomain, color, phaseMarkers,
         })
       }
 
-      ctx.strokeStyle = '#374151'
+      ctx.strokeStyle = '#8193a6'
       ctx.lineWidth = 0.5
       ctx.fillStyle = '#6b7280'
       ctx.font = '9px monospace'
@@ -2336,8 +2336,8 @@ function VectorCycle({ rhythm }) {
           { label: 'aVF',  angle: Math.PI / 2 },
         ]
         leads.forEach(({ label, angle: la }) => {
-          p.stroke(45, 55, 72)
-          p.strokeWeight(0.8)
+          p.stroke(203, 213, 225)
+          p.strokeWeight(1)
           p.drawingContext.setLineDash([3, 3])
           const ex = VCX + Math.cos(la) * VR, ey = VCY + Math.sin(la) * VR
           const sx = VCX - Math.cos(la) * VR, sy = VCY - Math.sin(la) * VR
@@ -2353,13 +2353,13 @@ function VectorCycle({ rhythm }) {
 
         // Wheel circle
         p.noFill()
-        p.stroke(40, 50, 65)
-        p.strokeWeight(0.8)
+        p.stroke(129, 147, 166)
+        p.strokeWeight(1)
         p.circle(VCX, VCY, VR * 2)
 
         // Lead I projection (blue dashed on x-axis)
         const projLen = Vx * VR  // dot with unit [1,0]
-        p.stroke(59, 130, 246, 120)
+        p.stroke(147, 197, 253)
         p.strokeWeight(1)
         p.drawingContext.setLineDash([2, 2])
         p.line(VCX + projLen, VCY - 6, VCX + projLen, VCY + 6)
@@ -2438,12 +2438,12 @@ function VectorCycle({ rhythm }) {
         }
 
         // ECG grid
-        p.stroke(40, 50, 65)
-        p.strokeWeight(0.5)
+        p.stroke(129, 147, 166)
+        p.strokeWeight(1)
         p.line(EX, EY, EX + EW, EY)
         p.line(EX, EY + EH, EX + EW, EY + EH)
         p.line(EX, EY + EH / 2, EX + EW, EY + EH / 2)
-        p.strokeWeight(0.4)
+        p.strokeWeight(1)
         for (let xi = 0; xi <= 4; xi++) {
           p.line(EX + xi * EW / 4, EY, EX + xi * EW / 4, EY + EH)
         }
@@ -2469,7 +2469,7 @@ function VectorCycle({ rhythm }) {
 
         // Current time marker
         const markerX = EX + ((tMs % (cm || CYCLE_MS)) / (cm || CYCLE_MS)) * EW
-        p.stroke(250, 250, 250, 130)
+        p.stroke(255)
         p.strokeWeight(1)
         p.drawingContext.setLineDash([3, 3])
         p.line(markerX, EY, markerX, EY + EH)

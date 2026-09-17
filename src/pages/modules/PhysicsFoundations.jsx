@@ -205,7 +205,7 @@ function Sim2A() {
           const ang = Math.atan2(y1 - y0, x1 - x0), len = 5
           p.push()
           p.translate(x1, y1); p.rotate(ang)
-          p.noStroke(); p.fill(80, 140, 255, 180)
+          p.noStroke(); p.fill(147, 197, 253)
           p.triangle(0, 0, -len, len * 0.5, -len, -len * 0.5)
           p.pop()
         }
@@ -222,7 +222,7 @@ function Sim2A() {
         const sources = positives.length > 0 ? positives : charges.filter(c => c.q < 0)
         if (sources.length === 0) return
         const nSeeds = Math.max(3, Math.min(16, Math.floor(64 / sources.length)))
-        p.noFill(); p.stroke(80, 140, 255, 150); p.strokeWeight(1.3)
+        p.noFill(); p.stroke(147, 197, 253); p.strokeWeight(1.3)
         for (const src of sources) {
           for (let k = 0; k < nSeeds; k++) {
             const a = (k / nSeeds) * Math.PI * 2
@@ -331,7 +331,7 @@ function Sim2A() {
       function drawEquipotentials() {
         computeCornerGrid()
         const levels = pickLevels()
-        p.stroke(110, 220, 140, 150); p.strokeWeight(1)
+        p.stroke(134, 239, 172); p.strokeWeight(1)
         for (const level of levels) drawContour(level)
       }
 
@@ -643,7 +643,7 @@ function SimCells() {
           p.drawingContext.shadowBlur = 14
           p.drawingContext.shadowColor = transitionSign > 0 ? 'rgba(129,140,248,0.9)' : 'rgba(253,224,71,0.9)'
         }
-        p.fill(r, g, b); p.stroke(255, 255, 255, 60); p.strokeWeight(1.2)
+        p.fill(r, g, b); p.stroke(203, 213, 225); p.strokeWeight(1.2)
         p.rectMode(p.CENTER)
         p.rect(x, ROW_Y, CELL_W, CELL_H, 13)
         p.drawingContext.shadowBlur = 0
@@ -699,7 +699,7 @@ function SimCells() {
         p.background(15, 20, 30)
 
         const { a: probeA, b: probeB } = probes()
-        p.noFill(); p.stroke(148, 163, 184, 55); p.strokeWeight(1)
+        p.noFill(); p.stroke(148, 163, 184); p.strokeWeight(1)
         p.circle(CX, ROW_Y, CELL_LEAD_RADIUS * 2)
         p.line(CX - 5, ROW_Y, CX + 5, ROW_Y)
         p.line(CX, ROW_Y - 5, CX, ROW_Y + 5)
@@ -721,7 +721,7 @@ function SimCells() {
         const vB = volt(recording.b.x, recording.b.y, cs)
         const dv = vA - vB
 
-        p.strokeWeight(1); p.stroke(150, 150, 150, 70)
+        p.strokeWeight(1); p.stroke(203, 213, 225)
         p.drawingContext.setLineDash([4, 3])
         p.line(probeA.x, probeA.y, probeB.x, probeB.y)
         p.drawingContext.setLineDash([])
@@ -761,7 +761,7 @@ function SimCells() {
         const normDV = Math.max(-1, Math.min(1, modelMillivolts(dv) / rangeMv))
         const arrowY = ROW_Y - CELL_H / 2 - 55
         const maxLen = 130
-        p.stroke(255, 255, 255, 40); p.strokeWeight(1)
+        p.stroke(203, 213, 225); p.strokeWeight(1)
         p.line(CX - maxLen, arrowY, CX + maxLen, arrowY)
         if (Math.abs(normDV) > 0.02) {
           arrow(CX, arrowY, CX + normDV * maxLen, arrowY, 245, 158, 11, 230, 3)
@@ -807,12 +807,12 @@ function SimCells() {
         p.rect(chX, chY, chW, chH, 7)
         p.textSize(9); p.textAlign(p.RIGHT, p.CENTER)
         for (const [value, y] of [[rangeMv, plotTop], [0, plotMid], [-rangeMv, plotBottom]]) {
-          p.stroke(255, 255, 255, 30); p.strokeWeight(1)
+          p.stroke(129, 147, 166); p.strokeWeight(1)
           p.line(plotX, y, plotX + plotW, y)
           p.noStroke(); p.fill(200, 200, 200, 180)
           p.text(`${value > 0 ? '+' : ''}${value.toFixed(3)} mV`, plotX - 5, y)
         }
-        p.noFill(); p.stroke(245, 158, 11, 200); p.strokeWeight(1.5)
+        p.noFill(); p.stroke(251, 191, 36); p.strokeWeight(1.5)
         p.beginShape()
         for (let k = 0; k <= steps; k++) {
           const fraction = Math.max(-1, Math.min(1, modelMillivolts(dvSamples[k]) / rangeMv))
@@ -820,7 +820,7 @@ function SimCells() {
         }
         p.endShape()
         const cursorX = plotX + (t / TOTAL_CYCLE) * plotW
-        p.stroke(255, 255, 255, 120); p.strokeWeight(1)
+        p.stroke(255); p.strokeWeight(1)
         p.line(cursorX, plotTop, cursorX, plotBottom)
         p.fill(245, 158, 11, 200); p.noStroke()
         p.textAlign(p.LEFT, p.BOTTOM); p.textSize(9)
@@ -968,12 +968,12 @@ function SimDotProduct() {
         p.background(15, 20, 30)
 
         // Grid
-        p.stroke(255, 255, 255, 11); p.strokeWeight(1)
+        p.stroke(82, 102, 122); p.strokeWeight(1)
         for (let x = OX % GRID; x < W; x += GRID) p.line(x, 0, x, H)
         for (let y = OY % GRID; y < H; y += GRID) p.line(0, y, W, y)
 
         // Axes
-        p.stroke(255, 255, 255, 32); p.strokeWeight(1)
+        p.stroke(203, 213, 225); p.strokeWeight(1)
         p.line(0, OY, W, OY); p.line(OX, 0, OX, H)
 
         const bm = mag(vecB)
@@ -987,13 +987,13 @@ function SimDotProduct() {
           const projY = OY + bn.y * projLen
 
           // Dashed perpendicular from A tip to projection point
-          p.stroke(59, 130, 246, 100); p.strokeWeight(1.4)
+          p.stroke(147, 197, 253); p.strokeWeight(1.4)
           p.drawingContext.setLineDash([4, 3])
           p.line(OX + vecA.x, OY + vecA.y, projX, projY)
           p.drawingContext.setLineDash([])
 
           // Projection segment on B axis
-          p.stroke(59, 130, 246, 180); p.strokeWeight(4)
+          p.stroke(96, 165, 250); p.strokeWeight(4)
           p.line(OX, OY, projX, projY)
 
           // Projection endpoint marker
@@ -1003,12 +1003,12 @@ function SimDotProduct() {
 
         // Resultant A+B (dashed, gray)
         const sx = OX + vecA.x + vecB.x, sy = OY + vecA.y + vecB.y
-        p.stroke(150, 150, 150, 55); p.strokeWeight(1.8)
+        p.stroke(203, 213, 225); p.strokeWeight(1.8)
         p.drawingContext.setLineDash([5, 4])
         p.line(OX + vecA.x, OY + vecA.y, sx, sy)
         p.line(OX + vecB.x, OY + vecB.y, sx, sy)
         p.drawingContext.setLineDash([])
-        arrow(OX, OY, sx, sy, 150, 150, 150, 70, 1.8)
+        arrow(OX, OY, sx, sy, 203, 213, 225, 255, 1.8)
 
         // Vector B (amber — the "lead axis")
         arrow(OX, OY, OX + vecB.x, OY + vecB.y, 245, 158, 11, 220, 3)

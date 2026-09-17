@@ -52,7 +52,7 @@ export function EinthovenAxisTriangle({ angleDeg, size = 200 }) {
       {/* Triangle outline */}
       <polygon
         points={verts.map(v => `${v.x},${v.y}`).join(' ')}
-        fill="none" stroke="#374151" strokeWidth={1.5}
+        fill="none" stroke="#94a3b8" strokeWidth={1.5}
       />
       {verts.map(v => (
         <g key={v.id}>
@@ -67,7 +67,7 @@ export function EinthovenAxisTriangle({ angleDeg, size = 200 }) {
         const lp = pt(cx, cy, r + 12, a)
         return (
           <g key={label}>
-            <line x1={p1.x} y1={p1.y} x2={p2.x} y2={p2.y} stroke={color} strokeOpacity={0.35} strokeWidth={1.5} strokeDasharray="5,4" />
+            <line x1={p1.x} y1={p1.y} x2={p2.x} y2={p2.y} stroke={color} strokeOpacity={1} strokeWidth={1.5} strokeDasharray="5,4" />
             <text x={lp.x} y={lp.y} fontSize={9} fontWeight="bold" fill={color} textAnchor="middle" fontFamily="monospace">{label}</text>
           </g>
         )

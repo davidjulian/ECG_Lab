@@ -1,3 +1,4 @@
+import { GRID_MINOR, GRID_MAJOR, BASELINE } from '../../lib/diagramColors'
 import { useEffect, useRef, useState } from 'react'
 import ModulePage from '../../components/ModulePage'
 import Explanation from '../../components/Explanation'
@@ -24,9 +25,6 @@ const PX_MV = 60       // vertical:   px per mV of signal
 const BL    = 0.58     // baseline y-fraction (0 mV position)
 
 const EMERALD    = '#10b981'
-const GRID_MINOR = 'rgba(16,185,129,0.07)'
-const GRID_MAJOR = 'rgba(16,185,129,0.18)'
-const BASELINE_C = 'rgba(255,255,255,0.10)'
 
 // ── UI param defaults ─────────────────────────────────────────────────────────
 // Purely physiological — students never set PR/QRS/QT/axis directly. Every
@@ -237,7 +235,7 @@ function drawGrid(ctx, w, h) {
   ctx.strokeStyle = GRID_MINOR
   for (let y = byY; y <= h; y += mvStep) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke() }
   for (let y = byY; y >= 0; y -= mvStep) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke() }
-  ctx.strokeStyle = BASELINE_C
+  ctx.strokeStyle = BASELINE
   ctx.beginPath(); ctx.moveTo(0, byY); ctx.lineTo(w, byY); ctx.stroke()
 }
 
@@ -249,7 +247,7 @@ function drawTrace(ctx, w, h, elapsedMs, { waves, cycleMs, nativeCycleMs }, lead
     const y = byY - v * PX_MV
     if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y)
   }
-  ctx.strokeStyle = EMERALD; ctx.lineWidth = 2; ctx.lineJoin = 'round'; ctx.stroke()
+  ctx.strokeStyle = '#6ee7b7'; ctx.lineWidth = 3; ctx.lineJoin = 'round'; ctx.stroke()
 }
 
 // ── Small sub-components ──────────────────────────────────────────────────────

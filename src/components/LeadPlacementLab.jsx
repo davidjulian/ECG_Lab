@@ -1,3 +1,4 @@
+import { GRID_MINOR, GRID_MAJOR, BASELINE } from '../lib/diagramColors'
 import Explanation from './Explanation'
 import { useEffect, useRef, useState } from 'react'
 import { cycleVoltage, buildRhythmFromParams, meanQRSAxis } from '../lib/ECGEngine'
@@ -74,7 +75,7 @@ function onBody(x,y) {
   return inside
 }
 function drawBody(ctx) {
-  ctx.save(); ctx.fillStyle='#0f172a'; ctx.strokeStyle='#334155'; ctx.lineWidth=1.5
+  ctx.save(); ctx.fillStyle='#0f172a'; ctx.strokeStyle='#94a3b8'; ctx.lineWidth=1.5
   ctx.beginPath(); ctx.ellipse(292,55.5,26,25.5,0,0,Math.PI*2); ctx.fill();ctx.stroke()
   ctx.beginPath(); BODY_POINTS.forEach((p,i)=>i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y));ctx.closePath();ctx.fill();ctx.stroke()
   ctx.restore()
@@ -103,7 +104,7 @@ function drawConnections(ctx, augmented) {
     ctx.fillText(`(${augmented.reference.join(' + ')}) / 2`,86,260)
   } else {
   EIN_LEADS.forEach(({a,b,label,color})=>{
-    ctx.strokeStyle=color;ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(sites[a].x,sites[a].y);ctx.lineTo(sites[b].x,sites[b].y);ctx.stroke()
+    ctx.strokeStyle=color;ctx.lineWidth=1.5;ctx.beginPath();ctx.moveTo(sites[a].x,sites[a].y);ctx.lineTo(sites[b].x,sites[b].y);ctx.stroke()
     ctx.fillStyle=color;ctx.textAlign = label === 'II' ? 'right' : label === 'III' ? 'left' : 'center'
     ctx.fillText(`Lead ${label}`,(sites[a].x+sites[b].x)/2+(label==='II'?-15:label==='III'?7:0),(sites[a].y+sites[b].y)/2-8)
     ctx.textAlign = 'center'
@@ -161,14 +162,14 @@ function drawGrid(ctx, w, h) {
   ctx.lineWidth = 1
   let i = 0
   for (let x = 0; x <= w; x += step) {
-    ctx.strokeStyle = i % 5 === 0 ? 'rgba(16,185,129,0.18)' : 'rgba(16,185,129,0.07)'
+    ctx.strokeStyle = i % 5 === 0 ? GRID_MAJOR : GRID_MINOR
     ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke(); i++
   }
   const mvStep = 0.5 * PX_MV
-  ctx.strokeStyle = 'rgba(16,185,129,0.07)'
+  ctx.strokeStyle = GRID_MINOR
   for (let y = by; y <= h; y += mvStep) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke() }
   for (let y = by; y >= 0; y -= mvStep) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke() }
-  ctx.strokeStyle = 'rgba(255,255,255,0.08)'
+  ctx.strokeStyle = BASELINE
   ctx.beginPath(); ctx.moveTo(0, by); ctx.lineTo(w, by); ctx.stroke()
 }
 
@@ -386,7 +387,7 @@ export default function LeadPlacementLab() {
 
         // Dashed perpendicular from tip to foot
         bCtx.setLineDash([4, 4])
-        bCtx.strokeStyle = 'rgba(148,163,184,0.55)'
+        bCtx.strokeStyle = '#e2e8f0'
         bCtx.lineWidth   = 1.5
         bCtx.beginPath()
         bCtx.moveTo(tipX, tipY)
@@ -409,7 +410,7 @@ export default function LeadPlacementLab() {
 
         // Right-angle tick at foot
         const perpLen = 6
-        bCtx.strokeStyle = 'rgba(148,163,184,0.7)'
+        bCtx.strokeStyle = '#e2e8f0'
         bCtx.lineWidth   = 1.5
         bCtx.beginPath()
         bCtx.moveTo(foot.x - perpLen * uy, foot.y + perpLen * ux)
@@ -451,7 +452,7 @@ export default function LeadPlacementLab() {
           drawElectrode(pos, '', '#f59e0b')
           bCtx.fillStyle = '#fbbf24'; bCtx.font = '10px monospace'; bCtx.textAlign = 'center'
           bCtx.fillText(`${limbPotential(pos).toFixed(3)} mV`, pos.x, pos.y + 24)
-          bCtx.setLineDash([4, 4]); bCtx.strokeStyle = '#f59e0b88'; bCtx.lineWidth = 1
+          bCtx.setLineDash([4, 4]); bCtx.strokeStyle = '#fbbf24'; bCtx.lineWidth = 1
           bCtx.beginPath(); bCtx.moveTo(pos.x, pos.y)
           bCtx.lineTo(box.x, box.y + 16 + i * 20); bCtx.stroke(); bCtx.setLineDash([])
         })
@@ -497,8 +498,8 @@ export default function LeadPlacementLab() {
         const y = by - v * PX_MV
         if (x === 0) eCtx.moveTo(x, y); else eCtx.lineTo(x, y)
       }
-      eCtx.strokeStyle = '#10b981'
-      eCtx.lineWidth   = 2
+      eCtx.strokeStyle = '#6ee7b7'
+      eCtx.lineWidth   = 3
       eCtx.lineJoin    = 'round'
       eCtx.stroke()
 

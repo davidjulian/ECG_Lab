@@ -1,3 +1,4 @@
+import { GRID_MINOR, GRID_MAJOR, BASELINE } from '../../lib/diagramColors'
 import Explanation from '../../components/Explanation'
 ﻿import { useEffect, useRef, useState, useMemo } from 'react'
 import ModulePage from '../../components/ModulePage'
@@ -14,8 +15,6 @@ const PX_MS = 0.20
 const PX_MV = 60
 const BL = 0.58
 const EMERALD     = '#10b981'
-const GRID_MINOR  = 'rgba(16,185,129,0.07)'
-const GRID_MAJOR  = 'rgba(16,185,129,0.18)'
 const LEAD_AXIS   = LEADS.II.axisDeg
 
 // ── Custom rhythm builders ────────────────────────────────────────────────────
@@ -511,7 +510,7 @@ function drawGrid(ctx, w, h) {
   ctx.strokeStyle = GRID_MINOR
   for (let y = byY; y <= h; y += mvStep) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke() }
   for (let y = byY; y >= 0; y -= mvStep) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke() }
-  ctx.strokeStyle = 'rgba(255,255,255,0.08)'
+  ctx.strokeStyle = BASELINE
   ctx.beginPath(); ctx.moveTo(0, byY); ctx.lineTo(w, byY); ctx.stroke()
 }
 
@@ -526,7 +525,7 @@ function drawTrace(ctx, w, h, elapsedMs, rhythm) {
     const y = byY - v * PX_MV
     if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y)
   }
-  ctx.strokeStyle = EMERALD; ctx.lineWidth = 2; ctx.lineJoin = 'round'; ctx.stroke()
+  ctx.strokeStyle = '#6ee7b7'; ctx.lineWidth = 3; ctx.lineJoin = 'round'; ctx.stroke()
 }
 
 function ECGStrip({ rhythm }) {
