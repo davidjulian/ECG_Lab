@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useMemo, useCallback } from 'react'
 import p5 from 'p5'
 import ModulePage from '../../components/ModulePage'
+import Explanation from '../../components/Explanation'
 import HeartAnimation, { buildConductionMap } from '../../components/HeartAnimation'
 import { ECGVoltage, cycleVoltage, buildRhythmFromParams, meanQRSAxis } from '../../lib/ECGEngine'
 import { AxisSummaryPanel } from '../../components/MeanAxisPanel'
@@ -1873,7 +1874,7 @@ function ECGVsAPSection({ rhythm }) {
       {/* TOP — the heart itself: drag the electrode here */}
       <div className="rounded-xl border border-gray-800 bg-gray-900/60 p-4 flex flex-col items-center">
         <p className="text-xs text-gray-500 mb-3 text-center max-w-md">
-          Drag the yellow intracellular microelectrode to choose a cell recording site. Its extracellular reference electrode is not shown. The blue skin electrodes stay fixed and record Lead II: left leg (+) minus right arm (−). Moving the yellow tip changes the intracellular recording, while the ECG continues to show the same heartbeat.
+          Drag the yellow intracellular microelectrode to choose a cell recording site. Its extracellular reference electrode is not shown. The blue skin electrodes stay fixed and record Lead II: left leg (+) minus right arm (−). Compare both traces before and after moving the yellow tip.
         </p>
         <HeartDropTarget
           clockRef={clockRef}
@@ -1903,14 +1904,14 @@ function ECGVsAPSection({ rhythm }) {
             color="#34d399"
             phaseMarkers={apMarkers}
           />
-          {region && <p className="text-[11px] text-gray-500 mt-1.5 leading-relaxed">{region.desc}</p>}
+          {region && <Explanation title="Recording explanation" resetKey={selectedRegion} className="mt-2">{region.desc}</Explanation>}
         </div>
 
         {/* SEPARATOR */}
         <div className="flex lg:flex-col items-center justify-center gap-2 lg:w-10 shrink-0 py-1">
-          <span className="text-2xl text-gray-600 font-bold">≠</span>
+          <span className="text-2xl text-gray-600">↔</span>
           <span className="text-[10px] text-gray-600 text-center leading-tight max-w-[90px]">
-            These are not the same signal
+            Compare the recordings
           </span>
         </div>
 

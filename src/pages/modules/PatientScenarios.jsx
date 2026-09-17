@@ -1,3 +1,4 @@
+import Explanation from '../../components/Explanation'
 ﻿import { useEffect, useRef, useState, useMemo } from 'react'
 import ModulePage from '../../components/ModulePage'
 import {
@@ -794,6 +795,7 @@ function ScenarioCard({ caseData }) {
         <p className="text-xs text-gray-600 mt-1">25 mm/s · 1 cm/mV standard calibration</p>
       </div>
 
+      <Explanation title="Case questions and hints" resetKey={caseData.id}>
       {caseData.scaffolded && !submitted && (
         <HintSequence hints={caseData.hints} />
       )}
@@ -829,6 +831,7 @@ function ScenarioCard({ caseData }) {
       ) : (
         <ScenarioResult caseData={caseData} score={score} />
       )}
+      </Explanation>
     </div>
   )
 }

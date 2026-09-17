@@ -1,3 +1,4 @@
+import Explanation from './Explanation'
 ﻿import { useEffect, useRef, useState } from 'react'
 import { ECGVoltage, buildRhythmFromParams, meanQRSAxis } from '../lib/ECGEngine'
 import { AxisSummaryPanel } from './MeanAxisPanel'
@@ -529,8 +530,7 @@ export default function LeadPlacementLab() {
               Drag the <span className="text-blue-400 font-semibold">+ (positive)</span> and{' '}
               <span className="text-amber-400 font-semibold">− (negative)</span> electrodes anywhere
               on the body. Each electrode reads its own voltage (shown right below it); the ECG
-              strip plots <span className="text-white">ΔV = V(+) − V(−)</span>, the{' '}
-              <span className="text-white">dot product</span> of the cardiac vector with your lead axis.
+              strip plots <span className="text-white">ΔV = V(+) − V(−)</span>.
               The <span className="text-amber-400">Cardiac Vector Axis</span> slider below rotates the
               vector itself — the other way to change the relationship, without moving electrodes.
             </p>
@@ -651,7 +651,7 @@ export default function LeadPlacementLab() {
           <div className="border-t border-gray-800">
             <div className="flex items-center gap-3 px-3 pt-2.5 pb-1">
               <p className="text-xs uppercase tracking-widest text-gray-600">Live ECG output</p>
-              <p className="text-xs text-gray-700">— amplitude scales with cosθ</p>
+
             </div>
             <canvas
               ref={ECGRef}
@@ -665,16 +665,6 @@ export default function LeadPlacementLab() {
 
         {/* Info panel */}
         <div className="w-64 shrink-0 bg-gray-900/80 border-l border-gray-800 p-4 flex flex-col gap-4 justify-center">
-          <div>
-            <p className="text-xs uppercase tracking-widest text-gray-600 mb-2">Physics</p>
-            <p className="text-xs text-gray-400 leading-relaxed">
-              The ECG measures the <strong className="text-white">projection</strong> of the cardiac vector onto the lead axis:
-            </p>
-            <p className="text-xs font-mono text-indigo-300 mt-2 text-center">
-              V = A·B = |A||B|cosθ
-            </p>
-          </div>
-
           <div className="space-y-3">
             <div>
               <p className="text-xs text-gray-500 mb-0.5">Angle θ</p>
@@ -698,11 +688,13 @@ export default function LeadPlacementLab() {
             </div>
           </div>
 
-          <div className="border-t border-gray-800 pt-3 space-y-1.5 text-xs text-gray-600">
-            <p><span className="text-blue-400">Parallel</span> → max amplitude</p>
-            <p><span className="text-gray-400">Perpendicular</span> → flat line</p>
-            <p><span className="text-amber-400">Anti-parallel</span> → inverted</p>
-          </div>
+          <Explanation>
+            <p>The lead records the projection of the cardiac vector onto its direction.
+              A parallel vector gives the largest positive contribution, a perpendicular vector
+              gives zero contribution at that instant, and an opposite vector gives a negative contribution.</p>
+            <p className="mt-2">Exchanging the recording connections reverses the sign of ΔV.
+              Rotating the source can also change its sign while the connections stay fixed.</p>
+          </Explanation>
 
           {showEinthoven && (
             <div className="border-t border-gray-800 pt-3">

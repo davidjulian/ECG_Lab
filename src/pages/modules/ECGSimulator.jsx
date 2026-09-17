@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import ModulePage from '../../components/ModulePage'
+import Explanation from '../../components/Explanation'
 import HeartAnimation from '../../components/HeartAnimation'
 import {
   LEADS, LEAD_ORDER,
@@ -107,7 +108,7 @@ function physiologicalInterpretation(derived) {
   }
   if (derived.atrialRegime === 'fibrillation') {
     return withIonNote({
-      mechanismText: 'The atrial refractory period has fallen below the re-entry threshold — multiple simultaneous circuits are sustaining themselves independently.',
+      mechanismText: 'The combination of atrial conduction velocity and refractory period permits re-entry in this model — multiple simultaneous circuits sustain disorganized activity.',
       clinicalName: 'Atrial Fibrillation', level: 'danger',
     })
   }
@@ -261,10 +262,10 @@ function ParamSlider({ label, value, min, max, step = 1, unit = '', color, disab
           {value}{unit}
         </span>
       </div>
-      <input type="range" min={min} max={max} step={step} value={value}
+      <input aria-label={label} type="range" min={min} max={max} step={step} value={value}
         onChange={e => onChange(Number(e.target.value))}
         className="w-full h-1.5 rounded accent-emerald-500" />
-      {hint && <p className="text-xs text-gray-600 mt-0.5 leading-snug">{hint}</p>}
+      {hint && <Explanation title="Control explanation" resetKey={`${label}:${value}:${hint}`} className="mt-2">{hint}</Explanation>}
     </div>
   )
 }
@@ -316,6 +317,7 @@ export default function ECGSimulator() {
   // its picker dropdown is open.
   const [openSection, setOpenSection] = useState('sa')
   const [menuOpen, setMenuOpen]       = useState(false)
+  const explanationKey = JSON.stringify([params, openSection, leadId])
   const menuRef       = useRef(null)
   const canvasRef     = useRef(null)
   const heartClockRef = useRef({ elapsedMs: 0, cycleMs: 800, tInCycle: 0, nativeCycleMs: null })
@@ -436,7 +438,7 @@ export default function ECGSimulator() {
       moduleId="ECG"
       number={4}
       title="ECG Simulator"
-      description="Use the physiological parameter controls to explore how changes in each cardiac structure affect the ECG. The rhythm name appears only after you produce it — your quiz questions will guide what to investigate."
+      description="Use the physiological parameter controls to explore how changes in each cardiac structure affect the ECG. Compare the traces and measurements before opening optional explanations."
       wide
     >
       <div className="space-y-3">
@@ -507,9 +509,7 @@ export default function ECGSimulator() {
         {/* ══ ROW 2: interpretation banner | current EKG measurements ═════ */}
         <div className="flex gap-3 items-stretch">
 
-          {/* Physiological interpretation banner — mechanism first, always.
-              Clinical name only appears below it, smaller — the one place
-              the rhythm name shows at all. */}
+          <Explanation title="Interpretation" resetKey={explanationKey} className="flex-[2.2] min-w-0">
           <div
             key={interp.clinicalName ?? interp.mechanismText}
             className="flex-[2.2] min-w-0 rounded-xl p-3 border animate-[pulse_0.6s_ease-out_1]"
@@ -527,6 +527,8 @@ export default function ECGSimulator() {
               </div>
             </div>
           </div>
+
+          </Explanation>
 
           {/* Current EKG measurements — a READOUT, not a control */}
           <div className="flex-1 min-w-0 rounded-xl bg-gray-900/70 border border-gray-800 p-3">
@@ -597,7 +599,10 @@ export default function ECGSimulator() {
             </div>
 
             {/* One-line physiological description for the selected structure */}
-            <p className="flex-1 min-w-0 text-xs text-gray-500 leading-snug">{activeSection.description}</p>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs text-gray-400 mb-2">Change one control at a time, then compare the ECG and its measurements. Reset all restores the starting settings.</p>
+              <Explanation title="Structure explanation" resetKey={explanationKey}>{activeSection.description}</Explanation>
+            </div>
 
             <button
               onClick={() => setParams(DEFAULT)}
@@ -633,11 +638,11 @@ export default function ECGSimulator() {
                     { label: 'Respiratory', value: 'respiratory' },
                     { label: 'Irregular',   value: 'irregular'   },
                   ]} />
-                  <p className="text-xs text-gray-600 mt-0.5 leading-snug">
+                  <Explanation resetKey={explanationKey} className="mt-2"><p className="text-xs text-gray-600 mt-0.5 leading-snug">
                     {firingRegularity === 'regular'     && 'Constant P-P interval.'}
                     {firingRegularity === 'respiratory' && 'Normal variant. Vagal tone increases on expiration, slowing the SA node. Common in young, healthy individuals and athletes — not a pathological finding.'}
                     {firingRegularity === 'irregular'   && 'SA node dysfunction — sick sinus syndrome. Rate becomes unpredictable.'}
-                  </p>
+                  </p></Explanation>
                 </div>
               </>
             )}
@@ -662,7 +667,7 @@ export default function ECGSimulator() {
                       ? 'Re-entry established — a single circuit is sustaining itself. The atria are contracting 4× faster than normal.'
                       : atrialRefractoryMs < 250
                       ? 'Atrial conduction is becoming slightly erratic — P wave morphology varies.'
-                      : 'How long atrial cells cannot be re-excited after firing. If the refractory period becomes shorter than the wavelength of a re-entrant impulse, organized conduction breaks down into multiple simultaneous wavelets.'
+                      : 'How long atrial cells cannot be re-excited after firing. Together with conduction velocity, this sets how far an impulse travels while tissue remains refractory; a short re-entry wavelength can permit sustained circuits.'
                   }
                 />
               </>
@@ -692,11 +697,11 @@ export default function ECGSimulator() {
                     { label: 'Uniform', value: 'uniform' },
                     { label: 'Fatigue', value: 'fatigue' },
                   ]} />
-                  <p className="text-xs text-gray-600 mt-0.5 leading-snug">
+                  <Explanation resetKey={explanationKey} className="mt-2"><p className="text-xs text-gray-600 mt-0.5 leading-snug">
                     {avRecoveryBehavior === 'fatigue'
                       ? "With each impulse, the AV node takes slightly longer to recover. This produces progressively longer PR intervals until a beat is finally blocked — then the node resets. This is the mechanism of Wenckebach."
                       : "The AV node either conducts or it doesn't — recovery time is constant. When a beat is blocked, there is no warning. This is the mechanism of Mobitz II."}
-                  </p>
+                  </p></Explanation>
                 </div>
                 <div>
                   <ParamSlider
@@ -707,11 +712,13 @@ export default function ECGSimulator() {
                     hint="Determines the maximum atrial rate the AV node will conduct. At flutter rates (~300 bpm), the refractory period determines how many impulses get through (2:1, 3:1, 4:1). You don't set the ratio directly — it emerges from the refractory period and the atrial rate."
                   />
                   {!isBlock && (
+                    <Explanation title="Conduction calculation" resetKey={explanationKey}>
                     <div className="mt-2 rounded-lg bg-gray-900/70 border border-gray-800 px-2.5 py-1.5 text-xs font-mono text-gray-400 leading-relaxed">
                       Atrial rate: <span className="text-gray-200">{atrialRateForCalc} bpm</span> → interval: <span className="text-gray-200">{Math.round(atrialIntervalForCalc)}ms</span>
                       <br />AV refractory period: <span className="text-gray-200">{Math.round(effectiveRefractoryForCalc)}ms</span>
                       {' → '}<span className="font-bold" style={{ color: EMERALD }}>{derived.avRatio}:{Math.max(1, derived.avRatio - 1)} conduction</span>
                     </div>
+                    </Explanation>
                   )}
                 </div>
                 <div>
@@ -722,13 +729,13 @@ export default function ECGSimulator() {
                     hint="AV-junctional tissue has intrinsic automaticity — normally at ~40-60 bpm — but is normally suppressed by the faster SA node (overdrive suppression). This slider controls what happens when SA node suppression is removed or AV conduction fails: a narrow-QRS junctional escape rhythm. A distal ventricular escape (wide QRS) is the separate Ventricular Ectopic Automaticity slider."
                   />
                   {purkinjeAutomaticity > 0 && (
-                    <p className="text-xs mt-1.5 leading-snug" style={{ color: derived.escapeSource === 'purkinje' ? '#f59e0b' : '#6b7280' }}>
+                    <Explanation resetKey={explanationKey} className="mt-2"><p className="text-xs mt-1.5 leading-snug" style={{ color: derived.escapeSource === 'purkinje' ? '#f59e0b' : '#6b7280' }}>
                       {derived.escapeSource === 'purkinje' && derived.avRatio === 1
                         ? `AV conduction is intact, but this focus (${Math.round(derived.effectivePurkinjeRate)} bpm) is now firing faster than the SA node (${Math.round(derived.effectiveSaRate)} bpm) — it has taken over control before any sinus impulse arrives.`
                         : derived.escapeSource === 'purkinje'
                         ? "The SA node's impulses aren't reaching the ventricles. The AV junction is now acting as an escape pacemaker — without it, the ventricles would not contract at all."
                         : `SA rate (${Math.round(derived.effectiveSaRate)} bpm) > AV junctional rate (${Math.round(derived.effectivePurkinjeRate)} bpm) — SA node is suppressing this backup pacemaker through overdrive suppression. Try slowing the SA node below the junctional rate, or blocking AV conduction, to see the escape rhythm emerge.`}
-                    </p>
+                    </p></Explanation>
                   )}
                 </div>
               </>
@@ -772,9 +779,9 @@ export default function ECGSimulator() {
                     onChange={v => set('ventricularApdMs', v)}
                     hint="Determines QT interval. Normally shortens at faster heart rates. When prolonged, the vulnerable period for re-entry widens — increasing the risk of Torsades de Pointes."
                   />
-                  <p className="text-xs mt-0.5 leading-snug" style={{ color: qtcColor }}>
+                  <Explanation resetKey={explanationKey} className="mt-2"><p className="text-xs mt-0.5 leading-snug" style={{ color: qtcColor }}>
                     {!qtcMs ? '' : qtcMs > 500 ? 'High risk — Torsades threshold approached.' : qtcMs > 440 ? 'Borderline prolonged — vulnerable period widening.' : 'Within normal range.'}
-                  </p>
+                  </p></Explanation>
                 </div>
                 <div>
                   <label className="text-xs text-gray-400 block mb-1">Repolarization Heterogeneity</label>
@@ -783,11 +790,11 @@ export default function ECGSimulator() {
                     { label: 'Moderate', value: 'moderate' },
                     { label: 'High',     value: 'high'     },
                   ]} />
-                  <p className="text-xs text-gray-600 mt-0.5 leading-snug">
+                  <Explanation resetKey={explanationKey} className="mt-2"><p className="text-xs text-gray-600 mt-0.5 leading-snug">
                     {repolHeterogeneity === 'none'     && 'Uniform T wave, low arrhythmia risk.'}
                     {repolHeterogeneity === 'moderate'  && 'T wave changes, inverted or biphasic.'}
                     {repolHeterogeneity === 'high'      && 'Heterogeneous repolarization creates a re-entry substrate — some regions are excitable while adjacent regions are still refractory. Re-entrant beats begin appearing.'}
-                  </p>
+                  </p></Explanation>
                 </div>
                 <div>
                   <ParamSlider
@@ -797,9 +804,9 @@ export default function ECGSimulator() {
                     hint="Ventricular muscle cells do not normally fire spontaneously — they wait for the Purkinje impulse. Ischemia, electrolyte abnormalities, and catecholamine excess can cause spontaneous depolarization in a small region of ventricular muscle, creating an ectopic focus."
                   />
                   {ventricularEctopicRate > 150 && derived.ectopicCapture === 'captured' && (
-                    <p className="text-xs text-red-400 mt-1.5 leading-snug">
+                    <Explanation resetKey={explanationKey} className="mt-2"><p className="text-xs text-red-400 mt-1.5 leading-snug">
                       Sustained ventricular tachycardia — haemodynamically dangerous. At these rates, ventricular filling is severely compromised.
-                    </p>
+                    </p></Explanation>
                   )}
                 </div>
               </>
@@ -814,8 +821,8 @@ export default function ECGSimulator() {
                     onChange={v => set('sympatheticTone', v)}
                     hint="Noradrenaline/adrenaline acts on β1 receptors. Increases If (steeper phase 4 slope in SA node), enhances ICa-L (faster AV conduction), shortens action potential duration (shorter QT)."
                   />
-                  <p className="text-xs text-gray-600 mt-1">↑ SA automaticity | ↓ AV conduction delay | ↓ AP duration</p>
-                  <p className="text-xs text-gray-700 mt-0.5">Exercise, fear, pain, epinephrine, dopamine, dobutamine</p>
+                  <Explanation resetKey={explanationKey} className="mt-2"><p className="text-xs text-gray-600 mt-1">↑ SA automaticity | ↓ AV conduction delay | ↓ AP duration</p></Explanation>
+                  <Explanation resetKey={explanationKey} className="mt-2"><p className="text-xs text-gray-700 mt-0.5">Exercise, fear, pain, epinephrine, dopamine, dobutamine</p></Explanation>
                 </div>
                 <div>
                   <ParamSlider
@@ -824,8 +831,8 @@ export default function ECGSimulator() {
                     onChange={v => set('parasympatheticTone', v)}
                     hint="Acetylcholine acts on M2 receptors. Opens IKAch channels — hyperpolarizes SA node (slower automaticity) and slows AV node conduction (longer PR)."
                   />
-                  <p className="text-xs text-gray-600 mt-1">↓ SA automaticity | ↑ AV conduction delay | variable AP duration</p>
-                  <p className="text-xs text-gray-700 mt-0.5">Sleep, vasovagal syncope, digoxin, athletic training, carotid sinus massage</p>
+                  <Explanation resetKey={explanationKey} className="mt-2"><p className="text-xs text-gray-600 mt-1">↓ SA automaticity | ↑ AV conduction delay | variable AP duration</p></Explanation>
+                  <Explanation resetKey={explanationKey} className="mt-2"><p className="text-xs text-gray-700 mt-0.5">Sleep, vasovagal syncope, digoxin, athletic training, carotid sinus massage</p></Explanation>
                 </div>
               </>
             )}
@@ -841,9 +848,9 @@ export default function ECGSimulator() {
                     hint="K+ gradient determines resting membrane potential (Nernst equation). Low K+ hyperpolarizes cells and prolongs action potentials. High K+ depolarizes cells and slows conduction globally."
                   />
                   {derived.ionAlert && (
-                    <p className="text-xs mt-1.5 leading-snug" style={{ color: derived.hyperkalemiaAlert ? '#ef4444' : '#f59e0b' }}>
+                    <Explanation resetKey={explanationKey} className="mt-2"><p className="text-xs mt-1.5 leading-snug" style={{ color: derived.hyperkalemiaAlert ? '#ef4444' : '#f59e0b' }}>
                       {derived.hyperkalemiaAlert && '⚠ Critical hyperkalemia. '}{derived.ionAlert}
-                    </p>
+                    </p></Explanation>
                   )}
                 </div>
                 <div>
@@ -854,7 +861,7 @@ export default function ECGSimulator() {
                     onChange={v => set('calciumMgDl', v)}
                     hint="Ca2+ affects the threshold for action potential firing and the plateau phase duration via ICa-L. It does NOT change resting membrane potential significantly."
                   />
-                  <p className="text-xs text-gray-600 mt-1.5 leading-snug">
+                  <Explanation resetKey={explanationKey} className="mt-2"><p className="text-xs text-gray-600 mt-1.5 leading-snug">
                     {calciumMgDl > 13
                       ? 'Severe hypercalcemia — abnormal notch at the J point (Osborn wave), also seen in hypothermia.'
                       : calciumMgDl > 10.5
@@ -862,7 +869,7 @@ export default function ECGSimulator() {
                       : calciumMgDl < 8.5
                       ? 'ST segment lengthens because ICa-L is reduced — the plateau phase takes longer to terminate. Predisposes to Torsades.'
                       : 'Normal range: 8.5-10.5 mg/dL.'}
-                  </p>
+                  </p></Explanation>
                 </div>
               </>
             )}

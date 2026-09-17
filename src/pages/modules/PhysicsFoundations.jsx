@@ -1,6 +1,7 @@
 ﻿import { useEffect, useRef, useState } from 'react'
 import p5 from 'p5'
 import ModulePage from '../../components/ModulePage'
+import Explanation from '../../components/Explanation'
 import { useNavigate } from 'react-router-dom'
 import { useTabState, usePublishTabs } from '../../components/ModuleTabs'
 import { modelMillivolts, formatMillivolts, gridDotProduct, DOT_UNIT_TO_MV } from '../../lib/physicsUnits'
@@ -27,15 +28,8 @@ function Section({ label, title, children }) {
   )
 }
 
-function Callout({ children, accent = '#2dd4bf' }) {
-  return (
-    <div
-      className="rounded-lg px-3 py-2 text-xs text-gray-300 leading-snug mb-1.5"
-      style={{ backgroundColor: accent + '0c', borderLeft: `3px solid ${accent}50` }}
-    >
-      {children}
-    </div>
-  )
+function Callout({ children }) {
+  return <Explanation className="my-2">{children}</Explanation>
 }
 
 function Equation({ children, label }) {
@@ -991,7 +985,7 @@ function Sim2DCells() {
         if (isPerpendicular) {
           p.fill(34, 211, 238, 220); p.noStroke()
           p.textAlign(p.CENTER, p.TOP); p.textSize(11)
-          p.text('⟂ Perpendicular to depolarization — reading = 0 exactly', CX, arrowY + 10)
+          p.text('Mirrored probe positions', CX, arrowY + 10)
         }
 
         // Info panel
@@ -1279,7 +1273,7 @@ function Sim2D() {
         const gridDot = gridDotProduct(vecA, vecB, GRID)
         p.fill(255, 255, 255, 210); p.text(`A · B = ${gridDot.toFixed(3)} model units²`, 18, 18)
         p.fill(200, 200, 200, 150)
-        p.text(`|A||B|cosθ = ${(am * bm * cosT / (GRID * GRID)).toFixed(3)}`, 18, 34)
+        p.text(`Compare length and angle`, 18, 34)
         p.fill(180, 180, 180, 130)
         p.text(`θ = ${theta.toFixed(1)}°    cosθ = ${cosT.toFixed(3)}`, 18, 50)
         p.fill(120, 120, 120, 100)
@@ -1345,16 +1339,18 @@ export default function PhysicsFoundations() {
       {active === '2A' && (
         <Section label="2A" title="Point charges create an electric field and potential">
           <p className="text-xs text-gray-400 leading-snug mb-2">
-            Add charges to the canvas. The colored background is the electric potential V at every
-            point — blue = positive, amber = negative. White lines are field lines: they leave +
-            charges and arrive at − charges, tracing the direction a positive test charge would move.
-            Toggle equipotentials to see the iso-V contours that run perpendicular to field lines.
+            Move the cursor without clicking to sample potential. Drag a charge to move it.
+            The colored background represents potential: blue = positive, amber = negative.
+            White lines and arrows represent the electric field. Toggle equipotential contours
+            and compare cursor readings along and across them.
           </p>
 
           <Sim2A />
 
           <Callout>
-            <strong className="text-white">Insight:</strong> When cardiac muscle depolarizes, positive
+            Electric field arrows point toward decreasing potential. Equipotential contours join
+            locations of equal potential and cross field lines at right angles.
+            <br /><br />When cardiac muscle depolarizes, positive
             ions rush into cells and a charge separation forms across the wavefront — positive charges
             ahead, negative charges behind. This is the same physics as two opposite charges on the canvas.
             The net effect at electrode distance approximates a single equivalent dipole.
@@ -1368,32 +1364,30 @@ export default function PhysicsFoundations() {
       {active === '2B' && (
         <Section label="2B" title="A dipole: the simplest model of the heart's field">
           <p className="text-xs text-gray-400 leading-snug mb-2">
-            A dipole is a locked +/− pair with a fixed separation. Rotate it by dragging the center.
-            Move the green probe to any point and read the voltage there. Notice that V depends on both
-            the probe's distance from the center <em>and</em> the angle between the probe and the dipole axis.
+            A dipole is a linked +/− pair with fixed separation. Drag its center region to rotate it.
+            Drag the green probe to select a sampling location and read its potential in mV.
+            Compare readings while changing one part of the arrangement at a time.
           </p>
-
-          <Equation label="θ = angle between dipole axis and probe direction">
-            {'V(r, θ) ≈ (kp cos θ) / r²'}
-          </Equation>
 
           <Sim2B />
 
           <Callout>
-            <strong className="text-white">Insight:</strong> At distances large compared to the
-            charge separation (true for skin electrodes), any distribution of charge looks like a
-            single dipole. The entire heart's electrical activity at each instant collapses to one
-            rotating vector <strong className="text-white">p⃗</strong> — this is why the cardiac
-            dipole model works.
+            Potential depends on distance and direction relative to the dipole.
+            <Equation label="θ = angle between dipole axis and probe direction">
+              {'V(r, θ) ≈ (kp cos θ) / r²'}
+            </Equation>
+            This approximation applies at distances large compared with the charge separation.
+            At equal distances from the two opposite charges, their potential contributions cancel.
+            An equivalent dipole is a simplified representation of the heart's distributed sources.
           </Callout>
 
-          <ForwardLink onNext={() => setActive('2C')}>continues in 2C — the dot product projects the dipole onto a measurement axis</ForwardLink>
+          <ForwardLink onNext={() => setActive('2C')}>continue to 2C — Dot Product</ForwardLink>
         </Section>
       )}
 
       {/* ── 2C ──────────────────────────────────────────────────────────────── */}
       {active === '2C' && (
-        <Section label="2C" title="The dot product: what every lead does to the cardiac vector">
+        <Section label="2C" title="Compare two vectors">
           <p className="text-xs text-gray-400 leading-snug mb-2">
             Vector <strong className="text-blue-400">A</strong> is the cardiac dipole at one instant.
             Vector <strong className="text-amber-400">B</strong> is the lead axis (the direction from −
@@ -1403,20 +1397,20 @@ export default function PhysicsFoundations() {
             shows its signed length.
           </p>
 
-          <Equation label="θ = angle between cardiac vector and lead axis">
-            {'A · B = |A| |B| cos θ'}
-          </Equation>
-
           <p className="text-xs text-gray-400 mb-2">
             Equivalent lead voltage = dot product × 0.1 mV per model unit². This fixed conversion
             illustrates how the projection affects a lead recording.
           </p>
           <Sim2D />
 
+          <Explanation className="my-2">
+          <Equation label="θ = angle between cardiac vector and lead axis">
+            {'A · B = |A| |B| cos θ'}
+          </Equation>
           <div className="grid grid-cols-3 gap-3 text-sm mb-3">
             {[
               { θ: '0°',   result: 'cos θ = 1',  desc: 'Lead parallel to cardiac vector → maximum positive deflection', color: '#3b82f6' },
-              { θ: '90°',  result: 'cos θ = 0',  desc: 'Lead perpendicular → isoelectric (flat line)',                  color: '#6b7280' },
+              { θ: '90°',  result: 'cos θ = 0',  desc: 'Lead perpendicular → zero contribution at this instant',                  color: '#6b7280' },
               { θ: '180°', result: 'cos θ = −1', desc: 'Lead anti-parallel → maximum negative (inverted waveform)',     color: '#f59e0b' },
             ].map(({ θ, result, desc, color }) => (
               <div key={θ} className="rounded-xl bg-gray-900 border border-gray-800 p-3">
@@ -1427,51 +1421,40 @@ export default function PhysicsFoundations() {
             ))}
           </div>
 
-          <Callout>
-            <strong className="text-white">Insight:</strong> In this model, a lead has a fixed vector (B).
+          <p>
+            In this model, a lead has a fixed vector (B).
             As the cardiac vector (A) changes through time, its dot product with B changes.
             Applying the fixed voltage scale and plotting the result through time produces a
             modeled lead waveform. At any instant, a vector perpendicular to B contributes zero
             to that lead, even when the cardiac vector is substantial.
-          </Callout>
+          </p>
+          </Explanation>
 
-          <ForwardLink onNext={() => setActive('2D')}>continues in 2D — how a depolarizing cell actually generates that dipole</ForwardLink>
+          <ForwardLink onNext={() => setActive('2D')}>continue to 2D — Depolarization</ForwardLink>
         </Section>
       )}
 
       {/* ── 2D ──────────────────────────────────────────────────────────────── */}
       {active === '2D' && (
-        <Section label="2D" title="Depolarization and repolarization of a cell generate a dipole">
-          <p className="text-xs text-gray-500 leading-snug mb-2 italic">
-            If you'd like to explore the physics of electric fields interactively before continuing,
-            Section 2A covers point charges. Otherwise you're in the right place.
-          </p>
+        <Section label="2D" title="Compare cell states and extracellular recordings">
           <p className="text-xs text-gray-400 leading-snug mb-2">
-            Ten cells sit side by side, each polarized (+ outside) at rest. Press play: a wave of
-            depolarization sweeps left→right, flipping each cell's exterior charge negative in turn,
-            then each cell repolarizes back to positive in the same order. Drag the{' '}
-            <span className="text-emerald-400">teal (A)</span> and{' '}
-            <span className="text-purple-400">purple (B)</span> probes to see the actual voltage the
-            cells' changing charges produce at any point — the amber arrow above the row and
-            ΔV = V(A) − V(B) in the panel below both track it live, exactly how a real electrode
-            pair would measure it. Placing the probes exactly perpendicular to the row (one directly
-            above, one directly below, equal distances) makes every cell equidistant from both, so
-            the reading goes to exactly zero — try it: the probes snap into that mirrored alignment
-            when dragged close, since lining it up by hand alone is hard to get exact. Toggle field
-            lines, equipotentials, or current lines to see the field itself.
+            Ten cells are shown in a row. Use Play, Pause, and Scrub to inspect their electrical states.
+            Drag the green (A) and purple (B) probes to sample extracellular potential.
+            The graph and amber arrow display ΔV = V(A) − V(B).
+            Probes snap into a mirrored arrangement when placed at matching positions above and below
+            the row. Use Voltage range to set the graph scale. Field lines, equipotentials, and
+            current lines can be toggled below the animation.
           </p>
 
           <Sim2DCells />
 
           <Callout>
-            <strong className="text-white">Insight:</strong> The strip-chart traces the electrodes'
-            own ΔV(t) — it rises, peaks, and falls as the wave crosses the row, the same shape as a
-            real QRS complex. Notice the reading <em>reverses sign</em> during repolarization: the
-            same left→right activation order now sweeps recovery instead of depolarization, so which
-            side reads more positive flips. This is exactly the dipole from 2A/2B — here you're
-            watching it being generated cell by cell instead of assuming it, and the probes show
-            that it's also directly measurable as a plain voltage difference (including going to
-            exactly zero when they're placed perpendicular to the row), just like the electrodes in Module 3.
+            Both probes sample contributions from all the modeled cells. Their voltage difference
+            can change while one selected cell remains depolarized. At mirrored positions, each cell
+            contributes equally to both probes, so the difference is zero even during tissue activity.
+            <br /><br />Activation and recovery travel in the same order in this row, giving opposite
+            signs during the early activation and late recovery intervals. The row is a simplified
+            model; its waveform is not a full cardiac ECG.
           </Callout>
 
           <ForwardLink onNext={() => navigate('/play/leads')}>continue to Module 3 — place electrodes and compare leads</ForwardLink>
