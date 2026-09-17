@@ -15,14 +15,14 @@ export default function Sidebar() {
         </div>
       </div>
       <nav className="flex-1 overflow-y-auto px-2 py-3 space-y-0.5">
-        {MODULES.map(info => {
+        {MODULES.map((info, index) => {
           const path = `/play/${info.id}`
           const active = location.pathname === path
           return (
             <div key={info.id}>
-              {info.advanced && <p className="px-3 pt-6 pb-2 text-xs uppercase tracking-widest text-gray-500">Advanced</p>}
+              {(index === 0 || MODULES[index - 1].group !== info.group) && <p className="px-3 pt-6 pb-2 text-xs uppercase tracking-widest text-gray-500">{info.group}</p>}
               <NavLink to={path} className={`flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-sm ${active ? 'bg-gray-800 text-white' : 'text-gray-400 hover:text-gray-200 hover:bg-gray-800/60'}`}>
-                <span className="w-5 h-5 rounded-full border border-gray-700 flex items-center justify-center text-xs shrink-0 font-mono">{info.advanced ? "+" : info.number}</span>
+                <span className="w-5 h-5 rounded-full border border-gray-700 flex items-center justify-center text-xs shrink-0 font-mono">{info.number ?? (info.advanced ? '+' : '•')}</span>
                 <span>{info.label}</span>
               </NavLink>
               {active && tabInfo?.moduleId === info.id && (

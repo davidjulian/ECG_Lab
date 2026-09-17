@@ -1,6 +1,6 @@
 import { ACCENT } from '../lib/modules'
 
-export default function ModulePage({ number, title, objective, description, wide = false, children }) {
+export default function ModulePage({ number, category = 'Advanced', title, objective, description, wide = false, children }) {
   const accent = ACCENT
   return (
     <div className={`min-h-screen mx-auto ${wide ? 'p-4 max-w-[1500px]' : 'p-5 max-w-4xl'}`}>
@@ -17,7 +17,7 @@ export default function ModulePage({ number, title, objective, description, wide
               border:          `1px solid ${accent}35`,
             }}
           >
-            {number ? `Module ${number}` : 'Advanced'}
+            {number ? `Module ${number}` : category}
           </span>
 
           <h1 className="text-lg font-bold text-white">{title}</h1>

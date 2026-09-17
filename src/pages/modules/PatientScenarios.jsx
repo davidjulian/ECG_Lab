@@ -744,7 +744,7 @@ function ScenarioResult({ caseData, score }) {
         <div>
           <p className="text-2xl font-bold text-white">{score}/{max}</p>
           <p className="text-sm text-gray-400">
-            {pct >= 80 ? 'Excellent — strong diagnostic reasoning.' : pct >= 60 ? 'Good — review the explanations below.' : 'Review the explanation and revisit Module 4 before retrying.'}
+            {pct >= 80 ? 'Excellent — strong diagnostic reasoning.' : pct >= 60 ? 'Good — review the explanations below.' : 'Review the explanation and revisit the ECG Simulator before retrying.'}
           </p>
         </div>
       </div>
@@ -857,7 +857,7 @@ export default function PatientScenarios() {
   return (
     <ModulePage
       moduleId="scenarios"
-      number={5}
+      category="Applications"
       title="Patient Cases"
       description="Each case below presents a patient whose ECG reveals a change in their conduction system physiology. For each case, identify the ECG rhythm, determine which physiological property changed, and explain why it produces the pattern you see."
     >

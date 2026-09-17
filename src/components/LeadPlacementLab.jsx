@@ -1,8 +1,7 @@
 import { GRID_MINOR, GRID_MAJOR, BASELINE } from '../lib/diagramColors'
 import Explanation from './Explanation'
 import { useEffect, useRef, useState } from 'react'
-import { cycleVoltage, buildRhythmFromParams, meanQRSAxis } from '../lib/ECGEngine'
-import { AxisSummaryPanel } from './MeanAxisPanel'
+import { cycleVoltage, buildRhythmFromParams } from '../lib/ECGEngine'
 
 function PlayIcon()  { return <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg> }
 function PauseIcon() { return <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M7 5h4v14H7zm6 0h4v14h-4z"/></svg> }
@@ -195,12 +194,6 @@ export default function LeadPlacementLab() {
   })
   const dragging   = useRef(null)   // 'plus' | 'minus' | null
 
-  // RHYTHM is a fixed module constant, so its OWN (unrotated) mean axis is
-  // fixed too — compute once per render (cheap) rather than per animation
-  // frame. The Cardiac Vector Axis slider below then rotates this by
-  // `axisRotation` for display (see rotatedAxis).
-  const baseAxis = meanQRSAxis(RHYTHM.waves)
-
   const [overlay, setOverlay] = useState('standard')
   const [augmentedLead, setAugmentedLead] = useState('aVF')
   const [playing, setPlaying] = useState(true)
@@ -222,19 +215,6 @@ export default function LeadPlacementLab() {
   useEffect(() => { playingRef.current = playing }, [playing])
   useEffect(() => { speedRef.current = speed }, [speed])
   useEffect(() => { rotationRef.current = axisRotation }, [axisRotation])
-
-  // A wave's contribution to a lead reading depends only on the DIFFERENCE
-  // between its own axis and the lead's axis (see cycleVoltage's
-  // projectionFactor), so subtracting `rot` from every lead axis we query is
-  // mathematically identical to adding `rot` to every wave's own axis —
-  // rotating the whole cardiac vector without touching ECGEngine.js at all.
-  // Reused for the live vectors below and for the static mean-axis display.
-  const rotRad = axisRotation * Math.PI / 180
-  const rotatedAxis = {
-    angleDeg:  (((baseAxis.angleDeg + axisRotation) + 180) % 360 + 360) % 360 - 180,
-    leadIMm:   baseAxis.leadIMm * Math.cos(rotRad) - baseAxis.leadAVFMm * Math.sin(rotRad),
-    leadAVFMm: baseAxis.leadIMm * Math.sin(rotRad) + baseAxis.leadAVFMm * Math.cos(rotRad),
-  }
 
   // Accumulated simulation time (ms) — advances only while playing, at the
   // current speed multiplier, so pausing freezes it and changing speed
@@ -326,22 +306,7 @@ export default function LeadPlacementLab() {
           bCtx.fillText(id, pos.x, pos.y - 9)
         })
 
-        // ── Mean QRS axis arrow — bold, bright, distinct from the indigo
-        // instantaneous vector below. Same (Lead I, aVF) axis convention as
-        // Vx/Vy, just built from the net QRS deflection instead of one
-        // instant, then rotated by `rot` the same way Vx/Vy are.
-        const { leadINet: baseI, leadAVFNet: baseAVF } = meanQRSAxis(waves)
-        const rotR = rot * Math.PI / 180
-        const leadINet  = baseI * Math.cos(rotR) - baseAVF * Math.sin(rotR)
-        const leadAVFNet = baseI * Math.sin(rotR) + baseAVF * Math.cos(rotR)
-        const meanAngle = (((Math.atan2(baseAVF, baseI) * 180 / Math.PI + rot) + 180) % 360 + 360) % 360 - 180
-        const meanTipX = CX + leadINet  * DIPOLE_SCALE
-        const meanTipY = CY + leadAVFNet * DIPOLE_SCALE
-        drawArrow(bCtx, CX, CY, meanTipX, meanTipY, '#facc15', 4, true)
-        bCtx.fillStyle = '#facc15'
-        bCtx.font = 'bold 10px monospace'
-        bCtx.textAlign = 'center'
-        bCtx.fillText(`Mean QRS Axis ${meanAngle >= 0 ? '+' : ''}${meanAngle.toFixed(0)}°`, CX + 18, BH_L - 16)
+
       }
 
       // Lead axis — extend across full canvas
@@ -581,7 +546,7 @@ export default function LeadPlacementLab() {
             <h3 className="text-sm font-semibold text-white mb-1">Lead Placement Lab</h3>
             <p className="text-xs text-gray-400 leading-relaxed max-w-lg">
               Explore a movable electrode pair or select an augmented limb lead.
-              The ECG plots ΔV = V(+) − V(−). Cardiac Vector Axis rotates the source.
+              The ECG plots ΔV = V(+) − V(−). Use Source rotation to change its orientation.
             </p>
           </div>
 
@@ -645,7 +610,7 @@ export default function LeadPlacementLab() {
 
       {/* Rotate the cardiac vector itself, independent of electrode placement */}
       <div className="px-3 py-1.5 border-b border-gray-800 flex items-center gap-3">
-        <span className="text-xs uppercase tracking-widest text-gray-600 shrink-0">Cardiac Vector Axis</span>
+        <span className="text-xs uppercase tracking-widest text-gray-600 shrink-0">Source rotation</span>
         <input
           type="range"
           min={-180}
@@ -749,11 +714,7 @@ export default function LeadPlacementLab() {
               Rotating the source can also change its sign while the connections stay fixed.</p>
           </Explanation>
 
-          {overlay !== 'none' && (
-            <div className="border-t border-gray-800 pt-3">
-              <AxisSummaryPanel angleDeg={rotatedAxis.angleDeg} leadIMm={rotatedAxis.leadIMm} leadAVFMm={rotatedAxis.leadAVFMm} />
-            </div>
-          )}
+
         </div>
       </div>
 

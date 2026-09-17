@@ -6,12 +6,15 @@ import PatientScenarios from './pages/modules/PatientScenarios'
 import { RecordingsPage, VectorCyclePage } from './pages/modules/CardiacBridge'
 import LeadsPage from './pages/modules/LeadsPage'
 
+import MeanAxisPage from './pages/modules/MeanAxisPage'
+
 export default function App() {
   return (
     <Routes>
       <Route path="/play" element={<FreePlayLayout />}>
         <Route index element={<Navigate to="recordings" replace />} />
         <Route path="recordings" element={<RecordingsPage />} />
+        <Route path="mean-axis" element={<MeanAxisPage />} />
         <Route path="leads" element={<LeadsPage />} />
         <Route path="vector-cycle" element={<VectorCyclePage />} />
         <Route path="physics" element={<PhysicsFoundations />} />

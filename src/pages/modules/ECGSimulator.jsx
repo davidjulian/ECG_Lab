@@ -8,11 +8,9 @@ import {
   ECGVoltage,
   buildRhythmFromPhysiology,
   physiologyToRhythmId,
-  meanQRSAxis,
   PHYSIOLOGY_DEFAULTS,
   warpTime,
 } from '../../lib/ECGEngine'
-import { EinthovenAxisTriangle, AxisSummaryPanel } from '../../components/MeanAxisPanel'
 
 // ── Canvas config ─────────────────────────────────────────────────────────────
 // CH taller than before (was 200) — the canvas is CSS-width:100% with no
@@ -411,7 +409,6 @@ export default function ECGSimulator() {
   } = params
 
   const derived = physRhythm.derived
-  const axis = meanQRSAxis(physRhythm.waves)
   const rhythmId = physiologyToRhythmId(derived)
   const interp = physiologicalInterpretation(derived)
 
@@ -434,18 +431,18 @@ export default function ECGSimulator() {
   return (
     <ModulePage
       moduleId="ECG"
-      number={4}
+      number={5}
       title="ECG Simulator"
       description="Use the physiological parameter controls to explore how changes in each cardiac structure affect the ECG. Compare the traces and measurements before opening optional explanations."
       wide
     >
       <div className="space-y-3">
 
-        {/* ══ ROW 1: waveform + heart animation | mean cardiac axis ═══════ */}
+        {/* ══ ROW 1: waveform + heart animation ═══════ */}
         <div className="flex gap-3 items-stretch">
 
           {/* ── ECG strip + conduction animation ───────────────────────── */}
-          <div className="flex-[2.2] min-w-0 rounded-xl bg-gray-950 border border-gray-800 p-3">
+          <div className="flex-1 min-w-0 rounded-xl bg-gray-950 border border-gray-800 p-3">
             <div className="flex items-center justify-between mb-1.5">
               <div className="flex items-center gap-2">
                 <span className="text-xs text-gray-600 uppercase tracking-widest">Lead</span>
@@ -480,8 +477,8 @@ export default function ECGSimulator() {
                 rhythmId={rhythmId}
                 rhythm={physRhythm}
                 className="shrink-0"
-                width={196}
-                height={230}
+                width={240}
+                height={280}
               />
               <div className="flex-1 min-w-0">
                 <canvas ref={canvasRef} width={CW} height={CH} className="w-full rounded-lg"
@@ -491,16 +488,6 @@ export default function ECGSimulator() {
             </div>
           </div>
 
-          {/* ── Mean cardiac axis — a readout, no manual override. Triangle
-               stacked above the summary so the box fills the row's height
-               rather than leaving a gap beside the taller ECG panel. ────── */}
-          <div className="flex-1 min-w-0 rounded-xl bg-gray-950 border border-gray-800 p-3">
-            <p className="text-xs uppercase tracking-widest text-gray-600 mb-1">Mean Cardiac Axis</p>
-            <div className="flex justify-center">
-              <EinthovenAxisTriangle angleDeg={axis.angleDeg} size={150} />
-            </div>
-            <AxisSummaryPanel angleDeg={axis.angleDeg} leadIMm={axis.leadIMm} leadAVFMm={axis.leadAVFMm} />
-          </div>
 
         </div>
 
@@ -536,7 +523,6 @@ export default function ECGSimulator() {
               <span className="text-gray-500">QRS <span className="font-bold tabular-nums" style={{ color: qrsColor }}>{derived.qrsDurationMs ? `${Math.round(derived.qrsDurationMs)}ms` : '—'}</span></span>
               <span className="text-gray-500">QT <span className="font-bold tabular-nums text-gray-300">{derived.qtIntervalMs ? `${Math.round(derived.qtIntervalMs)}ms` : '—'}</span></span>
               <span className="text-gray-500">QTc <span className="font-bold tabular-nums" style={{ color: qtcColor }}>{qtcMs ? `${qtcMs}ms` : '—'}</span></span>
-              <span className="text-gray-500">Axis <span className="font-bold tabular-nums text-gray-300">{axis.angleDeg >= 0 ? '+' : ''}{axis.angleDeg.toFixed(0)}°</span></span>
             </div>
           </div>
 
