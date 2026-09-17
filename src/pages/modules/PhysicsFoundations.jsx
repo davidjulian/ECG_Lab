@@ -744,7 +744,7 @@ function SimCells() {
         // full cycle — this is what actually depends on electrode placement
         // (unlike p(t), which is an intrinsic property of the charge
         // distribution and never changes). Reused below for both the
-        // electrode-reading arrow and the "ECG output" strip chart.
+        // electrode-reading arrow and the cell row voltage graph.
         const steps = 120
         const dvSamples = new Array(steps + 1)
         for (let k = 0; k <= steps; k++) {
@@ -796,7 +796,7 @@ function SimCells() {
         p.fill(255, 255, 255, 60); p.textSize(9)
         p.text('drag either electrode to rotate', 18, H - 14)
 
-        // "ECG output" strip chart — the ΔV(t) actually seen by the current
+        // cell row voltage graph — the ΔV(t) actually seen by the current
         // electrode pair, so it visibly changes shape as A/B are dragged
         // (unlike the underlying dipole, which is fixed).
         const chW = 185, chH = 100, chX = W - chW - 9, chY = 9
@@ -824,7 +824,7 @@ function SimCells() {
         p.line(cursorX, plotTop, cursorX, plotBottom)
         p.fill(245, 158, 11, 200); p.noStroke()
         p.textAlign(p.LEFT, p.BOTTOM); p.textSize(9)
-        p.text('Full-cycle ECG output ΔV', chX + 5, chY + chH - 4)
+        p.text('Cell row voltage ΔV', chX + 5, chY + chH - 4)
       }
 
       p.mousePressed = () => {
