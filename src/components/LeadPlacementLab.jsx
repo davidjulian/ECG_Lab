@@ -23,18 +23,16 @@ const BW = Math.round(BW_L * RENDER_SCALE), BH = Math.round(BH_L * RENDER_SCALE)
 const EW = Math.round(EW_L * RENDER_SCALE), EH = Math.round(EH_L * RENDER_SCALE)   // actual ECG canvas pixels
 
 // Cardiac dipole origin (center of chest in body canvas coords)
-const CX = 250, CY = 158
+const CX = 284, CY = 143.25
 
 // How many px = 1 mV on the body diagram dipole arrow
-const DIPOLE_SCALE = 52
+const DIPOLE_SCALE = 34
 
 // ECG strip constants
 const PX_MS = 0.20
-const PX_MV = 45
-// Baseline sits lower than center since the R wave (up to 1.5mV) swings much
-// further above baseline than the Q/S waves swing below it — this leaves
-// enough headroom on both sides that the trace no longer clips the top edge.
-const BL    = 0.62          // baseline y-fraction in ECG canvas
+const PX_MV = 40
+// Symmetric headroom keeps either polarity visible when leads are reversed.
+const BL    = 0.5          // baseline y-fraction in ECG canvas
 
 // Slows the whole animation down relative to real time so the cardiac vector
 // and its projection are easier to follow (1 = real-time heart rate).
@@ -48,9 +46,9 @@ const RHYTHM = buildRhythmFromParams({
 
 // Standard Einthoven electrode positions on body canvas
 const EIN = {
-  RA: { x: 138, y: 105 },
-  LA: { x: 362, y: 105 },
-  LL: { x: 250, y: 105 + 112 * Math.sqrt(3) },
+  RA: { x: 244, y: 100.5 },
+  LA: { x: 340, y: 100.5 },
+  LL: { x: 324, y: 186 },
 }
 const EIN_LEADS = [
   { a: 'RA', b: 'LA', label: 'I',   color: '#60a5fa' },
@@ -65,29 +63,37 @@ const AUGMENTED = {
 }
 
 // ── Drawing helpers ───────────────────────────────────────────────────────────
-// Anatomical placement key, separate from the idealized lead geometry.
-function drawBodyKey(ctx, augmented) {
-  ctx.save()
-  ctx.strokeStyle = '#334155'; ctx.fillStyle = '#0f172a'; ctx.lineWidth = 2
-  ctx.beginPath(); ctx.ellipse(62, 90, 13, 17, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke()
-  ctx.beginPath()
-  ctx.moveTo(48, 111); ctx.lineTo(30, 117); ctx.lineTo(16, 171)
-  ctx.lineTo(29, 175); ctx.lineTo(44, 139); ctx.lineTo(42, 177)
-  ctx.lineTo(38, 239); ctx.lineTo(55, 239); ctx.lineTo(62, 188)
-  ctx.lineTo(69, 239); ctx.lineTo(86, 239); ctx.lineTo(82, 177)
-  ctx.lineTo(80, 139); ctx.lineTo(95, 175); ctx.lineTo(108, 171)
-  ctx.lineTo(94, 117); ctx.lineTo(76, 111); ctx.closePath(); ctx.fill(); ctx.stroke()
-  const sites = { RA: { x: 24, y: 160 }, LA: { x: 100, y: 160 }, LL: { x: 78, y: 228 } }
-  for (const [id, p] of Object.entries(sites)) {
-    ctx.fillStyle = augmented ? (id === augmented.positive ? '#60a5fa' : '#fbbf24') : '#94a3b8'
-    ctx.beginPath(); ctx.arc(p.x, p.y, 4, 0, Math.PI * 2); ctx.fill()
-    ctx.font = 'bold 10px sans-serif'; ctx.textAlign = 'center'
-    ctx.fillText(id, p.x, p.y + (id === 'LL' ? 23 : -10))
+// Front-facing figure with a natural stance. Limb connections are schematic.
+const BODY_POINTS = [[48,111],[30,117],[16,171],[29,175],[44,139],[42,177],[38,239],[55,239],[62,188],[69,239],[86,239],[82,177],[80,139],[95,175],[108,171],[94,117],[76,111]].map(([x,y]) => ({x:168+2*x,y:-79.5+1.5*y}))
+function onBody(x,y) {
+  let inside=false
+  for(let i=0,j=BODY_POINTS.length-1;i<BODY_POINTS.length;j=i++) {
+    const a=BODY_POINTS[i],b=BODY_POINTS[j]
+    if((a.y>y)!==(b.y>y) && x<(b.x-a.x)*(y-a.y)/(b.y-a.y)+a.x) inside=!inside
   }
-  ctx.fillStyle = '#94a3b8'; ctx.font = '10px sans-serif'; ctx.textAlign = 'center'
-  ctx.fillText('Body locations', 62, 59)
-  ctx.fillText('Front view', 62, 269)
+  return inside
+}
+function drawBody(ctx) {
+  ctx.save(); ctx.fillStyle='#0f172a'; ctx.strokeStyle='#334155'; ctx.lineWidth=1.5
+  ctx.beginPath(); ctx.ellipse(292,55.5,26,25.5,0,0,Math.PI*2); ctx.fill();ctx.stroke()
+  ctx.beginPath(); BODY_POINTS.forEach((p,i)=>i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y));ctx.closePath();ctx.fill();ctx.stroke()
   ctx.restore()
+}
+function drawConnections(ctx, augmented) {
+  const sites={RA:{x:28,y:95},LA:{x:143.2,y:95},LL:{x:124,y:197.6}}
+  ctx.save();ctx.textAlign='center';ctx.font='10px sans-serif';ctx.fillStyle='#94a3b8'
+  ctx.fillText('Electrode connections',86,24)
+  EIN_LEADS.forEach(({a,b,label,color})=>{
+    ctx.strokeStyle=color;ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(sites[a].x,sites[a].y);ctx.lineTo(sites[b].x,sites[b].y);ctx.stroke()
+    ctx.fillStyle=color;ctx.textAlign = label === 'II' ? 'right' : label === 'III' ? 'left' : 'center'
+    ctx.fillText(`Lead ${label}`,(sites[a].x+sites[b].x)/2+(label==='II'?-15:label==='III'?7:0),(sites[a].y+sites[b].y)/2-8)
+    ctx.textAlign = 'center'
+  })
+  Object.entries(sites).forEach(([id,p])=>{
+    ctx.fillStyle=augmented?(id===augmented.positive?'#60a5fa':'#fbbf24'):'#94a3b8'
+    ctx.beginPath();ctx.arc(p.x,p.y,4,0,Math.PI*2);ctx.fill();ctx.fillText(id,p.x,p.y+(id==='LL'?18:-14))
+  })
+  ctx.fillStyle='#64748b';ctx.fillText('Schematic placement',86,283);ctx.restore()
 }
 
 function drawArrow(ctx, x1, y1, x2, y2, color, width, glow) {
@@ -163,8 +169,8 @@ export default function LeadPlacementLab() {
 
   // Electrode positions (mutable ref — no re-render on drag)
   const elec = useRef({
-    plus:  { x: 330, y: 272 },
-    minus: { x: 138, y: 105 },
+    plus: { ...EIN.LL },
+    minus: { ...EIN.RA },
   })
   const dragging   = useRef(null)   // 'plus' | 'minus' | null
 
@@ -262,9 +268,9 @@ export default function LeadPlacementLab() {
       // the body's electrical center) so it's clear ΔV = V(+) − V(−) is what
       // drives the trace, not some abstract unexplained number.
       const projection = Vx * ux + Vy * uy
-      const gain = augmented ? dist / 224 : 1
+      const gain = augmented ? dist / 96 : 1
       // Linear potential model: derived references average the two limb inputs.
-      const limbPotential = pos => (Vx * (pos.x - 250) + Vy * (pos.y - (105 + 112 / Math.sqrt(3)))) / 224
+      const limbPotential = pos => (Vx * (pos.x - (EIN.RA.x + EIN.LA.x + EIN.LL.x) / 3) + Vy * (pos.y - (EIN.RA.y + EIN.LA.y + EIN.LL.y) / 3)) / 96
       const vPlus = augmented ? limbPotential(plus) : projection / 2
       const vMinus = augmented ? (limbPotential(refs[0]) + limbPotential(refs[1])) / 2 : -projection / 2
       const dotProd = vPlus - vMinus
@@ -281,28 +287,12 @@ export default function LeadPlacementLab() {
       bCtx.fillStyle = '#64748b'
       bCtx.font = '11px sans-serif'
       bCtx.textAlign = 'center'
-      bCtx.fillText('Lead geometry (schematic)', 300, 24)
-      drawBodyKey(bCtx, augmented)
+      bCtx.fillText('Simplified electrode locations · front view', 310, 18)
+      drawBody(bCtx)
+      if (overlayRef.current !== 'none') drawConnections(bCtx, augmented)
 
       // Einthoven triangle
       if (overlayRef.current !== 'none') {
-        if (!augmented) EIN_LEADS.forEach(({ a, b, label, color }) => {
-          bCtx.strokeStyle = color + '55'
-          bCtx.lineWidth   = 1.5
-          bCtx.setLineDash([5, 4])
-          bCtx.beginPath()
-          bCtx.moveTo(EIN[a].x, EIN[a].y)
-          bCtx.lineTo(EIN[b].x, EIN[b].y)
-          bCtx.stroke()
-          bCtx.setLineDash([])
-          // Label at midpoint
-          const mx = (EIN[a].x + EIN[b].x) / 2
-          const my = (EIN[a].y + EIN[b].y) / 2
-          bCtx.fillStyle = color + 'cc'
-          bCtx.font = 'bold 11px monospace'
-          bCtx.textAlign = 'center'
-          bCtx.fillText(`Lead ${label}`, mx + (label === 'I' ? 0 : label === 'II' ? -22 : 22), my)
-        })
         // Einthoven electrode dots
         Object.entries(EIN).forEach(([id, pos]) => {
           bCtx.beginPath()
@@ -330,16 +320,16 @@ export default function LeadPlacementLab() {
         bCtx.fillStyle = '#facc15'
         bCtx.font = 'bold 10px monospace'
         bCtx.textAlign = 'center'
-        bCtx.fillText(`Mean QRS Axis ${meanAngle >= 0 ? '+' : ''}${meanAngle.toFixed(0)}°`, meanTipX, meanTipY - 10)
+        bCtx.fillText(`Mean QRS Axis ${meanAngle >= 0 ? '+' : ''}${meanAngle.toFixed(0)}°`, CX + 18, BH_L - 16)
       }
 
       // Lead axis — extend across full canvas
       {
         bCtx.save()
-        bCtx.beginPath(); bCtx.rect(125, 40, BW_L - 125, BH_L - 40); bCtx.clip()
+        bCtx.beginPath(); bCtx.rect(180, 30, BW_L - 180, BH_L - 30); bCtx.clip()
         const extend = 600
-        const ax = minus.x - ux * extend, ay = minus.y - uy * extend
-        const bx = minus.x + ux * extend, by = minus.y + uy * extend
+        const ax = CX - ux * extend, ay = CY - uy * extend
+        const bx = CX + ux * extend, by = CY + uy * extend
         bCtx.strokeStyle = 'rgba(100,116,139,0.35)'
         bCtx.lineWidth   = 1
         bCtx.setLineDash([8, 6])
@@ -369,10 +359,10 @@ export default function LeadPlacementLab() {
       // ── Projection visualization ────────────────────────────────────────
       if (vMag > 0.03) {
         // Foot of perpendicular from DIPOLE TIP to lead axis
-        const foot = projectPointOntoLine(tipX, tipY, minus.x, minus.y, plus.x, plus.y)
+        const foot = projectPointOntoLine(tipX, tipY, CX, CY, CX + ux, CY + uy)
 
         // Origin projected onto lead axis
-        const orig = projectPointOntoLine(CX, CY, minus.x, minus.y, plus.x, plus.y)
+        const orig = { x: CX, y: CY }
 
         // Dashed perpendicular from tip to foot
         bCtx.setLineDash([4, 4])
@@ -408,7 +398,7 @@ export default function LeadPlacementLab() {
 
         // ΔV label on the projected segment itself, so the number is tied
         // directly to the visual segment that represents it.
-        const midX = (orig.x + foot.x) / 2, midY = (orig.y + foot.y) / 2
+        const midX = CX, midY = CY - 20
         bCtx.fillStyle = projColor
         bCtx.font = 'bold 11px monospace'
         bCtx.textAlign = 'center'
@@ -542,6 +532,7 @@ export default function LeadPlacementLab() {
     const scaleY = BH / rect.height
     const mx = (e.clientX - rect.left) * scaleX / RENDER_SCALE
     const my = (e.clientY - rect.top)  * scaleY / RENDER_SCALE
+    if (!onBody(mx, my)) return
     elec.current[dragging.current] = {
       x: Math.max(10, Math.min(BW_L - 10, mx)),
       y: Math.max(10, Math.min(BH_L - 10, my)),
@@ -663,7 +654,8 @@ export default function LeadPlacementLab() {
               {overlay === 'augmented' && <select aria-label="Augmented lead" value={augmentedLead} onChange={e => setAugmentedLead(e.target.value)} className="bg-gray-950 border border-gray-700 rounded px-2 py-1 text-gray-200">
                 {Object.keys(AUGMENTED).map(lead => <option key={lead}>{lead}</option>)}
               </select>}
-              <span className="text-gray-400">{overlay === 'augmented' ? `${augmentedLead} = ${AUGMENTED[augmentedLead].positive} − (${AUGMENTED[augmentedLead].reference.join(' + ')}) / 2` : 'Drag + and − to explore'}</span>
+              {overlay === 'standard' && EIN_LEADS.map(({a,b,label}) => <button key={label} onClick={() => { elec.current = { minus: {...EIN[a]}, plus: {...EIN[b]} } }} className="border border-gray-700 rounded px-2 py-1 text-gray-200">{label}</button>)}
+              <span className="text-gray-400">{overlay === 'augmented' ? `${augmentedLead} = ${AUGMENTED[augmentedLead].positive} − (${AUGMENTED[augmentedLead].reference.join(' + ')}) / 2` : 'Drag + and − on the figure'}</span>
             </div>
             <canvas
               ref={bodyRef}
@@ -681,7 +673,7 @@ export default function LeadPlacementLab() {
             {/* Floating annotation */}
             <div className="px-3 py-2 pointer-events-none">
               <p className="text-xs text-gray-600 text-center font-mono">
-                {overlay === 'augmented' ? 'Dashed lines combine electrode potentials into a calculated reference' : 'Electrode spacing is schematic; explore lead direction'}
+                {overlay === 'augmented' ? 'Dashed lines combine electrode potentials into a calculated reference' : 'Dashed axis passes through the cardiac origin, parallel to the electrode connection'}
               </p>
             </div>
           </div>
@@ -729,7 +721,7 @@ export default function LeadPlacementLab() {
           </div>
 
           <Explanation>
-            <p>The lead records the projection of the cardiac vector onto its direction.
+            <p>Electrode connections show simplified body placement, not the conventional equilateral Einthoven model. These illustrative voltages use a projection model, not an anatomical volume conductor. The dashed axis is parallel to the electrode connection and passes through the cardiac origin. The lead records the projection of the cardiac vector onto its direction.
               A parallel vector gives the largest positive contribution, a perpendicular vector
               gives zero contribution at that instant, and an opposite vector gives a negative contribution.</p>
             <p className="mt-2">Exchanging the recording connections reverses the sign of ΔV.
