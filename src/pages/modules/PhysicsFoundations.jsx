@@ -3,6 +3,7 @@ import p5 from 'p5'
 import ModulePage from '../../components/ModulePage'
 import { useNavigate } from 'react-router-dom'
 import { useTabState, usePublishTabs } from '../../components/ModuleTabs'
+import { modelMillivolts, formatMillivolts, gridDotProduct, DOT_UNIT_TO_MV } from '../../lib/physicsUnits'
 
 const TABS = [
   { id: '2A', label: '2A · Charges' },
@@ -386,7 +387,7 @@ function Sim2A() {
           const mv = volt(p.mouseX, p.mouseY)
           p.fill(255, 255, 255, 150); p.noStroke()
           p.textAlign(p.LEFT, p.TOP); p.textSize(10)
-          p.text(`V = ${mv.toFixed(0)}`, 8, 8)
+          p.text(`V = ${formatMillivolts(modelMillivolts(mv))}`, 8, 8)
         }
       }
 
@@ -535,7 +536,7 @@ function Sim2B() {
         const tv = volt(testPt.x, testPt.y)
         p.fill(52, 211, 153); p.stroke(52, 211, 153, 200); p.strokeWeight(1.8)
         p.circle(testPt.x, testPt.y, 12)
-        const lbl = `V = ${tv.toFixed(0)}`
+        const lbl = `V = ${formatMillivolts(modelMillivolts(tv))}`
         const lw = lbl.length * 7.2 + 9
         p.fill(15, 20, 30, 200); p.noStroke()
         p.rect(testPt.x + 9, testPt.y - 9, lw, 17, 3.5)
@@ -590,6 +591,9 @@ function Sim2DCells() {
   const [showField, setShowField] = useState(false)
   const [showEq, setShowEq] = useState(false)
   const [showCurrent, setShowCurrent] = useState(false)
+  const [voltageRange, setVoltageRange] = useState(2)
+  const voltageRangeRef = useRef(voltageRange)
+  useEffect(() => { voltageRangeRef.current = voltageRange }, [voltageRange])
 
   const playingRef = useRef(playing)
   const speedRef = useRef(speed)
@@ -945,9 +949,9 @@ function Sim2DCells() {
 
         p.noStroke(); p.textAlign(p.CENTER, p.BOTTOM); p.textSize(10)
         p.fill(52, 211, 153, 220)
-        p.text(`A  ${vA.toFixed(0)}`, probeA.x, probeA.y - PR - 3)
+        p.text(`A  ${formatMillivolts(modelMillivolts(vA))}`, probeA.x, probeA.y - PR - 3)
         p.fill(168, 85, 247, 220)
-        p.text(`B  ${vB.toFixed(0)}`, probeB.x, probeB.y - PR - 3)
+        p.text(`B  ${formatMillivolts(modelMillivolts(vB))}`, probeB.x, probeB.y - PR - 3)
 
         // Sample ΔV(t) as currently measured by the dragged probes, over one
         // full cycle — this is what actually depends on electrode placement
@@ -968,7 +972,8 @@ function Sim2DCells() {
         // Electrode reading vector, drawn above the row — how much of the
         // field the current probe pair actually picks up, so dragging A/B
         // visibly changes the arrow.
-        const normDV = Math.max(-1, Math.min(1, dv / maxDV))
+        const rangeMv = voltageRangeRef.current
+        const normDV = Math.max(-1, Math.min(1, modelMillivolts(dv) / rangeMv))
         const arrowY = ROW_Y - CELL_H / 2 - 55
         const maxLen = 130
         p.stroke(255, 255, 255, 40); p.strokeWeight(1)
@@ -1000,33 +1005,42 @@ function Sim2DCells() {
         p.fill(15, 20, 30, 210); p.noStroke()
         p.rect(9, H - 68, 190, 59, 7)
         p.textAlign(p.LEFT, p.TOP); p.textSize(11)
-        p.fill(52, 211, 153, 220); p.text(`V(A) = ${vA.toFixed(0)}`, 18, H - 60)
-        p.fill(168, 85, 247, 220); p.text(`V(B) = ${vB.toFixed(0)}`, 18, H - 44)
-        p.fill(255, 255, 255, 210); p.text(`ΔV = ${dv.toFixed(0)}`, 18, H - 28)
+        p.fill(52, 211, 153, 220); p.text(`V(A) = ${formatMillivolts(modelMillivolts(vA))}`, 18, H - 60)
+        p.fill(168, 85, 247, 220); p.text(`V(B) = ${formatMillivolts(modelMillivolts(vB))}`, 18, H - 44)
+        p.fill(255, 255, 255, 210); p.text(`ΔV = ${formatMillivolts(modelMillivolts(dv))}`, 18, H - 28)
         p.fill(255, 255, 255, 60); p.textSize(9)
         p.text('drag A/B to probe the field', 18, H - 14)
 
         // "ECG output" strip chart — the ΔV(t) actually seen by the current
         // electrode pair, so it visibly changes shape as A/B are dragged
         // (unlike the underlying dipole, which is fixed).
-        const chW = 190, chH = 60, chX = W - chW - 9, chY = 9
+        const chW = 205, chH = 100, chX = W - chW - 9, chY = 9
+        const plotX = chX + 48, plotW = chW - 54
+        const plotTop = chY + 16, plotBottom = chY + chH - 25
+        const plotMid = (plotTop + plotBottom) / 2, plotHalf = (plotBottom - plotTop) / 2
         p.fill(15, 20, 30, 210); p.noStroke()
         p.rect(chX, chY, chW, chH, 7)
-        p.stroke(255, 255, 255, 30); p.strokeWeight(1)
-        p.line(chX, chY + chH / 2, chX + chW, chY + chH / 2)
+        p.textSize(9); p.textAlign(p.RIGHT, p.CENTER)
+        for (const [value, y] of [[rangeMv, plotTop], [0, plotMid], [-rangeMv, plotBottom]]) {
+          p.stroke(255, 255, 255, 30); p.strokeWeight(1)
+          p.line(plotX, y, plotX + plotW, y)
+          p.noStroke(); p.fill(200, 200, 200, 180)
+          p.text(`${value > 0 ? '+' : ''}${value} mV`, plotX - 5, y)
+        }
         p.noFill(); p.stroke(245, 158, 11, 200); p.strokeWeight(1.5)
         p.beginShape()
         for (let k = 0; k <= steps; k++) {
-          const py = chY + chH / 2 - (dvSamples[k] / maxDV) * (chH / 2 - 4)
-          p.vertex(chX + (k / steps) * chW, py)
+          const fraction = Math.max(-1, Math.min(1, modelMillivolts(dvSamples[k]) / rangeMv))
+          p.vertex(plotX + (k / steps) * plotW, plotMid - fraction * plotHalf)
         }
         p.endShape()
-        const cursorX = chX + (t / TOTAL_CYCLE) * chW
+        const cursorX = plotX + (t / TOTAL_CYCLE) * plotW
         p.stroke(255, 255, 255, 120); p.strokeWeight(1)
-        p.line(cursorX, chY, cursorX, chY + chH)
+        p.line(cursorX, plotTop, cursorX, plotBottom)
         p.fill(245, 158, 11, 200); p.noStroke()
         p.textAlign(p.LEFT, p.BOTTOM); p.textSize(9)
-        p.text('ECG output (ΔV)', chX + 5, chY + chH - 4)
+        const offScale = modelMillivolts(maxDV) > rangeMv
+        p.text(offScale ? 'Off scale: choose a larger range' : 'ECG output ΔV (fixed scale)', chX + 5, chY + chH - 4)
       }
 
       p.mousePressed = () => {
@@ -1124,6 +1138,16 @@ function Sim2DCells() {
         <span ref={scrubLabelRef} className="text-xs font-mono text-gray-500 tabular-nums w-28 text-right">
           0 / {CELLS_TOTAL_CYCLE_MS} ms
         </span>
+      </SimBar>
+      <SimBar>
+        <label className="flex items-center gap-2">
+          Voltage range
+          <select aria-label="Voltage range" value={voltageRange} onChange={e => setVoltageRange(Number(e.target.value))}
+            className="bg-gray-900 border border-gray-700 rounded px-2 py-1 text-gray-300">
+            {[1, 2, 5, 10].map(value => <option key={value} value={value}>±{value} mV</option>)}
+          </select>
+        </label>
+        <span>Graph and arrow keep this scale as probes move. Readouts show the full values.</span>
       </SimBar>
     </CanvasWrap>
   )
@@ -1250,11 +1274,12 @@ function Sim2D() {
         const theta = Math.acos(Math.max(-1, Math.min(1, cosT))) * 180 / Math.PI
 
         p.fill(15, 20, 30, 215); p.noStroke()
-        p.rect(9, 9, 246, 88, 7)
+        p.rect(9, 9, 275, 110, 7)
         p.textAlign(p.LEFT, p.TOP); p.textSize(12)
-        p.fill(255, 255, 255, 210); p.text(`A · B  = ${dotVal.toFixed(0)}`, 18, 18)
+        const gridDot = gridDotProduct(vecA, vecB, GRID)
+        p.fill(255, 255, 255, 210); p.text(`A · B = ${gridDot.toFixed(3)} model units²`, 18, 18)
         p.fill(200, 200, 200, 150)
-        p.text(`|A||B|cosθ = ${(am * bm * cosT).toFixed(0)}`, 18, 34)
+        p.text(`|A||B|cosθ = ${(am * bm * cosT / (GRID * GRID)).toFixed(3)}`, 18, 34)
         p.fill(180, 180, 180, 130)
         p.text(`θ = ${theta.toFixed(1)}°    cosθ = ${cosT.toFixed(3)}`, 18, 50)
         p.fill(120, 120, 120, 100)
@@ -1262,7 +1287,9 @@ function Sim2D() {
 
         // Legend
         p.fill(59, 130, 246, 150); p.textSize(10); p.textAlign(p.LEFT, p.TOP)
-        p.text('—— projection of A onto B', 18, 82)
+        p.text('Lengths: model units (1 per grid square)', 18, 82)
+        p.fill(52, 211, 153, 220); p.textSize(12)
+        p.text(`Equivalent lead = ${formatMillivolts(gridDot * DOT_UNIT_TO_MV)}`, 18, 100)
 
         // Hint
         p.fill(255, 255, 255, 60); p.textAlign(p.LEFT, p.BOTTOM); p.textSize(12)
@@ -1310,6 +1337,10 @@ export default function PhysicsFoundations() {
       number={2}
       title="Electrical Fields"
     >
+      <p className="text-xs text-gray-400 mb-3">
+        Model potentials are scaled to millivolts to illustrate ECG principles. The scale stays fixed
+        as sources and probes move. Readings are rounded to 0.001 mV; 0.000 mV can be a small rounded value.
+      </p>
       {/* ── 2A ──────────────────────────────────────────────────────────────── */}
       {active === '2A' && (
         <Section label="2A" title="Point charges create an electric field and potential">
@@ -1366,15 +1397,20 @@ export default function PhysicsFoundations() {
           <p className="text-xs text-gray-400 leading-snug mb-2">
             Vector <strong className="text-blue-400">A</strong> is the cardiac dipole at one instant.
             Vector <strong className="text-amber-400">B</strong> is the lead axis (the direction from −
-            electrode to + electrode). The ECG voltage recorded by that lead is A&thinsp;·&thinsp;B.
+            electrode to + electrode, with a modeled sensitivity given by its length).
+            Vector lengths use model units, with one unit per grid square.
             The dashed line shows the projection of A onto B; the thick blue segment on the B axis
             shows its signed length.
           </p>
 
           <Equation label="θ = angle between cardiac vector and lead axis">
-            {'V_lead = A · B = |A| |B| cos θ'}
+            {'A · B = |A| |B| cos θ'}
           </Equation>
 
+          <p className="text-xs text-gray-400 mb-2">
+            Equivalent lead voltage = dot product × 0.1 mV per model unit². This fixed conversion
+            illustrates how the projection affects a lead recording.
+          </p>
           <Sim2D />
 
           <div className="grid grid-cols-3 gap-3 text-sm mb-3">
@@ -1392,11 +1428,11 @@ export default function PhysicsFoundations() {
           </div>
 
           <Callout>
-            <strong className="text-white">Insight:</strong> Every ECG lead is a fixed axis (B).
-            The cardiac dipole rotates through one full arc per heartbeat (A sweeps through time).
-            The waveform you see on screen is simply A&thinsp;·&thinsp;B plotted against time — the
-            dot product of a rotating vector onto a stationary axis. Leads aligned with the mean
-            cardiac axis see tall complexes; leads perpendicular to it see flat lines.
+            <strong className="text-white">Insight:</strong> In this model, a lead has a fixed vector (B).
+            As the cardiac vector (A) changes through time, its dot product with B changes.
+            Applying the fixed voltage scale and plotting the result through time produces a
+            modeled lead waveform. At any instant, a vector perpendicular to B contributes zero
+            to that lead, even when the cardiac vector is substantial.
           </Callout>
 
           <ForwardLink onNext={() => setActive('2D')}>continues in 2D — how a depolarizing cell actually generates that dipole</ForwardLink>
