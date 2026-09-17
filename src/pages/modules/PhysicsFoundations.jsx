@@ -572,7 +572,7 @@ function Sim2B() {
 // ── 2C: Extracellular sources from a row of cells ───────────
 function PlayIcon()  { return <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg> }
 function PauseIcon() { return <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M7 5h4v14H7zm6 0h4v14h-4z"/></svg> }
-const CELL_SPEEDS = [0.25, 0.5, 1, 1.5, 2]
+const CELL_SPEEDS = [0.25, 0.5, 1]
 function SimCells() {
   const containerRef = useRef()
 

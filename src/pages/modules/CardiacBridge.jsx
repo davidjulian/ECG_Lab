@@ -1820,7 +1820,8 @@ function HeartDropTarget({ clockRef, rhythm, selectedRegion, onSelect }) {
 
 function ECGVsAPSection({ rhythm }) {
   const cycleMs = rhythm.cycleMs || CYCLE_MS
-  const { clockRef, tMs, isPlaying, toggle, setPlaying, scrub } = useLocalClock(cycleMs, rhythm.nativeCycleMs ?? null)
+  const [speed, setSpeed] = useState(1)
+  const { clockRef, tMs, isPlaying, toggle, setPlaying, scrub } = useLocalClock(cycleMs, rhythm.nativeCycleMs ?? null, speed)
   const [selectedRegion, setSelectedRegion] = useState('ventricle')
   const [zoomed, setZoomed] = useState(false)
 
@@ -1944,6 +1945,17 @@ function ECGVsAPSection({ rhythm }) {
         >
           {isPlaying ? 'Pause' : 'Play'}
         </button>
+        <div className="flex items-center gap-1.5" role="group" aria-label="Playback speed">
+          <span className="text-xs uppercase tracking-widest text-gray-500">Speed</span>
+          {[0.25, 0.5, 1].map(value => (
+            <button key={value} onClick={() => setSpeed(value)} aria-pressed={speed === value}
+              className={`px-2 py-1 rounded-md text-xs font-mono border transition-colors ${
+                speed === value ? 'bg-indigo-950/60 text-indigo-300 border-indigo-700/50' : 'text-gray-500 border-gray-700 hover:text-gray-300'
+              }`}>
+              {value}×
+            </button>
+          ))}
+        </div>
         <input
           type="range"
           min={xDomain[0]}
