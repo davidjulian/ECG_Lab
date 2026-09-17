@@ -1,6 +1,6 @@
 import Explanation from './Explanation'
 import { useEffect, useRef, useState } from 'react'
-import { ECGVoltage, buildRhythmFromParams, meanQRSAxis } from '../lib/ECGEngine'
+import { cycleVoltage, buildRhythmFromParams, meanQRSAxis } from '../lib/ECGEngine'
 import { AxisSummaryPanel } from './MeanAxisPanel'
 
 function PlayIcon()  { return <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg> }
@@ -50,7 +50,7 @@ const RHYTHM = buildRhythmFromParams({
 const EIN = {
   RA: { x: 138, y: 105 },
   LA: { x: 362, y: 105 },
-  LL: { x: 250, y: 293 },
+  LL: { x: 250, y: 105 + 112 * Math.sqrt(3) },
 }
 const EIN_LEADS = [
   { a: 'RA', b: 'LA', label: 'I',   color: '#60a5fa' },
@@ -58,48 +58,36 @@ const EIN_LEADS = [
   { a: 'LA', b: 'LL', label: 'III', color: '#f472b6' },
 ]
 
-// ── Drawing helpers ───────────────────────────────────────────────────────────
-function buildTorsoPath(ctx) {
-  ctx.beginPath()
-  ctx.moveTo(224, 70)
-  ctx.bezierCurveTo(198, 76, 148, 82, 120, 108)
-  ctx.bezierCurveTo(108, 145, 114, 188, 130, 298)
-  ctx.lineTo(370, 298)
-  ctx.bezierCurveTo(386, 188, 392, 145, 380, 108)
-  ctx.bezierCurveTo(352, 82, 302, 76, 276, 70)
-  ctx.closePath()
+const AUGMENTED = {
+  aVR: { positive: 'RA', reference: ['LA', 'LL'] },
+  aVL: { positive: 'LA', reference: ['RA', 'LL'] },
+  aVF: { positive: 'LL', reference: ['RA', 'LA'] },
 }
 
-function drawTorso(ctx) {
-  // Fill
-  buildTorsoPath(ctx)
-  ctx.fillStyle = '#0d1b2e'
-  ctx.fill()
-  // Outline
-  buildTorsoPath(ctx)
-  ctx.strokeStyle = '#1e3a5f'
-  ctx.lineWidth = 1.5
-  ctx.stroke()
-
-  // Head
+// ── Drawing helpers ───────────────────────────────────────────────────────────
+// Anatomical placement key, separate from the idealized lead geometry.
+function drawBodyKey(ctx, augmented) {
+  ctx.save()
+  ctx.strokeStyle = '#334155'; ctx.fillStyle = '#0f172a'; ctx.lineWidth = 2
+  ctx.beginPath(); ctx.ellipse(62, 90, 13, 17, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke()
   ctx.beginPath()
-  ctx.ellipse(250, 38, 30, 36, 0, 0, Math.PI * 2)
-  ctx.fillStyle = '#0d1b2e'
-  ctx.fill()
-  ctx.strokeStyle = '#1e3a5f'
-  ctx.lineWidth = 1.5
-  ctx.stroke()
-
-  // Subtle rib lines
-  ctx.strokeStyle = 'rgba(30,58,95,0.6)'
-  ctx.lineWidth = 1
-  for (let i = 0; i < 4; i++) {
-    const y = 128 + i * 32
-    ctx.beginPath()
-    ctx.moveTo(158 - i * 3, y)
-    ctx.bezierCurveTo(200, y + 8, 300, y + 8, 342 + i * 3, y)
-    ctx.stroke()
+  ctx.moveTo(48, 111); ctx.lineTo(30, 117); ctx.lineTo(16, 171)
+  ctx.lineTo(29, 175); ctx.lineTo(44, 139); ctx.lineTo(42, 177)
+  ctx.lineTo(38, 239); ctx.lineTo(55, 239); ctx.lineTo(62, 188)
+  ctx.lineTo(69, 239); ctx.lineTo(86, 239); ctx.lineTo(82, 177)
+  ctx.lineTo(80, 139); ctx.lineTo(95, 175); ctx.lineTo(108, 171)
+  ctx.lineTo(94, 117); ctx.lineTo(76, 111); ctx.closePath(); ctx.fill(); ctx.stroke()
+  const sites = { RA: { x: 24, y: 160 }, LA: { x: 100, y: 160 }, LL: { x: 78, y: 228 } }
+  for (const [id, p] of Object.entries(sites)) {
+    ctx.fillStyle = augmented ? (id === augmented.positive ? '#60a5fa' : '#fbbf24') : '#94a3b8'
+    ctx.beginPath(); ctx.arc(p.x, p.y, 4, 0, Math.PI * 2); ctx.fill()
+    ctx.font = 'bold 10px sans-serif'; ctx.textAlign = 'center'
+    ctx.fillText(id, p.x, p.y + (id === 'LL' ? 23 : -10))
   }
+  ctx.fillStyle = '#94a3b8'; ctx.font = '10px sans-serif'; ctx.textAlign = 'center'
+  ctx.fillText('Body locations', 62, 59)
+  ctx.fillText('Front view', 62, 269)
+  ctx.restore()
 }
 
 function drawArrow(ctx, x1, y1, x2, y2, color, width, glow) {
@@ -186,7 +174,8 @@ export default function LeadPlacementLab() {
   // `axisRotation` for display (see rotatedAxis).
   const baseAxis = meanQRSAxis(RHYTHM.waves)
 
-  const [showEinthoven, setShowEinthoven] = useState(true)
+  const [overlay, setOverlay] = useState('standard')
+  const [augmentedLead, setAugmentedLead] = useState('aVF')
   const [playing, setPlaying] = useState(true)
   const [speed, setSpeed] = useState(TIME_SCALE)
   // Degrees added to every wave's axis, i.e. rotates the whole instantaneous
@@ -196,11 +185,13 @@ export default function LeadPlacementLab() {
   const [axisRotation, setAxisRotation] = useState(0)
 
   // Track state in refs for use inside rAF without re-subscribing the loop
-  const showERef  = useRef(showEinthoven)
+  const overlayRef = useRef(overlay)
+  const augmentedRef = useRef(augmentedLead)
   const playingRef = useRef(playing)
   const speedRef   = useRef(speed)
   const rotationRef = useRef(axisRotation)
-  useEffect(() => { showERef.current = showEinthoven }, [showEinthoven])
+  useEffect(() => { overlayRef.current = overlay; dragging.current = null }, [overlay])
+  useEffect(() => { augmentedRef.current = augmentedLead }, [augmentedLead])
   useEffect(() => { playingRef.current = playing }, [playing])
   useEffect(() => { speedRef.current = speed }, [speed])
   useEffect(() => { rotationRef.current = axisRotation }, [axisRotation])
@@ -248,7 +239,10 @@ export default function LeadPlacementLab() {
       }
       if (scrubLabelRef.current) scrubLabelRef.current.textContent = `${Math.round(tMs)} / ${Math.round(cycleMs)} ms`
 
-      const { plus, minus } = elec.current
+      const augmented = overlayRef.current === 'augmented' ? AUGMENTED[augmentedRef.current] : null
+      const refs = augmented?.reference.map(id => EIN[id])
+      const plus = augmented ? EIN[augmented.positive] : elec.current.plus
+      const minus = augmented ? { x: (refs[0].x + refs[1].x) / 2, y: (refs[0].y + refs[1].y) / 2 } : elec.current.minus
       const dx = plus.x - minus.x
       const dy = plus.y - minus.y
       const dist = Math.sqrt(dx * dx + dy * dy) || 1
@@ -259,32 +253,40 @@ export default function LeadPlacementLab() {
       // Cardiac vector components (Lead I=x, aVF=y) — querying at
       // (0 - rot)/(90 - rot) instead of 0/90 rotates the whole cardiac
       // vector by `rot` (see the rotationRef comment above).
-      const Vx = ECGVoltage(tMs, cycleMs, waves, 0  - rot, nativeCycleMs)
-      const Vy = ECGVoltage(tMs, cycleMs, waves, 90 - rot, nativeCycleMs)
+      const Vx = cycleVoltage(tMs * (nativeCycleMs ?? cycleMs) / cycleMs, waves, 0 - rot)
+      const Vy = cycleVoltage(tMs * (nativeCycleMs ?? cycleMs) / cycleMs, waves, 90 - rot)
 
       // Dot product = projection of cardiac vector onto lead axis. This is the
       // voltage the lead actually records; we present it to the student as a
       // difference between two electrode readings (split symmetrically around
       // the body's electrical center) so it's clear ΔV = V(+) − V(−) is what
       // drives the trace, not some abstract unexplained number.
-      const dotProd = Vx * ux + Vy * uy
-      const vPlus = dotProd / 2
-      const vMinus = -dotProd / 2
+      const projection = Vx * ux + Vy * uy
+      const gain = augmented ? dist / 224 : 1
+      // Linear potential model: derived references average the two limb inputs.
+      const limbPotential = pos => (Vx * (pos.x - 250) + Vy * (pos.y - (105 + 112 / Math.sqrt(3)))) / 224
+      const vPlus = augmented ? limbPotential(plus) : projection / 2
+      const vMinus = augmented ? (limbPotential(refs[0]) + limbPotential(refs[1])) / 2 : -projection / 2
+      const dotProd = vPlus - vMinus
 
       // Angle between cardiac vector and lead axis
       const vMag   = Math.sqrt(Vx * Vx + Vy * Vy)
-      const cosTheta = vMag > 0.001 ? Math.max(-1, Math.min(1, dotProd / vMag)) : 0
+      const cosTheta = vMag > 0.001 ? Math.max(-1, Math.min(1, projection / vMag)) : 0
       const thetaDeg = Math.acos(cosTheta) * 180 / Math.PI
 
       // ── Body canvas ────────────────────────────────────────────────────
       bCtx.setTransform(1, 0, 0, 1, 0, 0)
       bCtx.clearRect(0, 0, BW, BH)
       bCtx.setTransform(RENDER_SCALE, 0, 0, RENDER_SCALE, 0, 0)
-      drawTorso(bCtx)
+      bCtx.fillStyle = '#64748b'
+      bCtx.font = '11px sans-serif'
+      bCtx.textAlign = 'center'
+      bCtx.fillText('Lead geometry (schematic)', 300, 24)
+      drawBodyKey(bCtx, augmented)
 
       // Einthoven triangle
-      if (showERef.current) {
-        EIN_LEADS.forEach(({ a, b, label, color }) => {
+      if (overlayRef.current !== 'none') {
+        if (!augmented) EIN_LEADS.forEach(({ a, b, label, color }) => {
           bCtx.strokeStyle = color + '55'
           bCtx.lineWidth   = 1.5
           bCtx.setLineDash([5, 4])
@@ -333,6 +335,8 @@ export default function LeadPlacementLab() {
 
       // Lead axis — extend across full canvas
       {
+        bCtx.save()
+        bCtx.beginPath(); bCtx.rect(125, 40, BW_L - 125, BH_L - 40); bCtx.clip()
         const extend = 600
         const ax = minus.x - ux * extend, ay = minus.y - uy * extend
         const bx = minus.x + ux * extend, by = minus.y + uy * extend
@@ -344,6 +348,7 @@ export default function LeadPlacementLab() {
         bCtx.lineTo(bx, by)
         bCtx.stroke()
         bCtx.setLineDash([])
+        bCtx.restore()
       }
 
       // ── Cardiac vector ──────────────────────────────────────────────────
@@ -427,7 +432,26 @@ export default function LeadPlacementLab() {
         bCtx.textBaseline = 'alphabetic'
       }
       drawElectrode(plus,  '+', '#3b82f6')
-      drawElectrode(minus, '−', '#f59e0b')
+      if (!augmented) drawElectrode(minus, '−', '#f59e0b')
+      if (augmented) {
+        // Dashed connections lead to an explicit arithmetic reference box,
+        // never an extra physical electrode at the geometric midpoint.
+        const box = { x: 371, y: 222, w: 123, h: 66 }
+        refs.forEach((pos, i) => {
+          drawElectrode(pos, '', '#f59e0b')
+          bCtx.fillStyle = '#fbbf24'; bCtx.font = '10px monospace'; bCtx.textAlign = 'center'
+          bCtx.fillText(`${limbPotential(pos).toFixed(3)} mV`, pos.x, pos.y + 24)
+          bCtx.setLineDash([4, 4]); bCtx.strokeStyle = '#f59e0b88'; bCtx.lineWidth = 1
+          bCtx.beginPath(); bCtx.moveTo(pos.x, pos.y)
+          bCtx.lineTo(box.x, box.y + 16 + i * 20); bCtx.stroke(); bCtx.setLineDash([])
+        })
+        bCtx.fillStyle = '#111827'; bCtx.fillRect(box.x, box.y, box.w, box.h)
+        bCtx.strokeStyle = '#f59e0b'; bCtx.strokeRect(box.x, box.y, box.w, box.h)
+        bCtx.textAlign = 'center'; bCtx.font = '10px sans-serif'; bCtx.fillStyle = '#fbbf24'
+        bCtx.fillText('Average reference (−)', box.x + box.w / 2, box.y + 16)
+        bCtx.fillText(`(${augmented.reference.join(' + ')}) / 2`, box.x + box.w / 2, box.y + 33)
+        bCtx.fillText(`${vMinus.toFixed(3)} mV`, box.x + box.w / 2, box.y + 51)
+      }
 
       // Per-electrode voltage readout — the actual numbers being differenced
       // to produce ΔV, shown right at the electrode that reads them.
@@ -436,7 +460,7 @@ export default function LeadPlacementLab() {
       bCtx.fillStyle = '#60a5fa'
       bCtx.fillText(`${vPlus >= 0 ? '+' : ''}${vPlus.toFixed(2)} mV`, plus.x, plus.y + 24)
       bCtx.fillStyle = '#fbbf24'
-      bCtx.fillText(`${vMinus >= 0 ? '+' : ''}${vMinus.toFixed(2)} mV`, minus.x, minus.y + 24)
+      if (!augmented) bCtx.fillText(`${vMinus >= 0 ? '+' : ''}${vMinus.toFixed(2)} mV`, minus.x, minus.y + 24)
 
       // ── Live info panel update ──────────────────────────────────────────
       if (angleRef.current)  angleRef.current.textContent  = `${thetaDeg.toFixed(1)}°`
@@ -459,7 +483,7 @@ export default function LeadPlacementLab() {
       const by = EH_L * BL
       eCtx.beginPath()
       for (let x = 0; x <= EW_L; x++) {
-        const v = ECGVoltage(x / PX_MS, cycleMs, waves, leadAxisDeg - rot, nativeCycleMs)
+        const v = gain * cycleVoltage(((x / PX_MS) % cycleMs) * (nativeCycleMs ?? cycleMs) / cycleMs, waves, leadAxisDeg - rot)
         const y = by - v * PX_MV
         if (x === 0) eCtx.moveTo(x, y); else eCtx.lineTo(x, y)
       }
@@ -498,6 +522,7 @@ export default function LeadPlacementLab() {
   // RENDER_SCALE to land back in the logical space electrode positions are
   // actually stored/drawn in (0..BW_L) — see the RENDER_SCALE comment above.
   const onMouseDown = (e) => {
+    if (overlayRef.current === 'augmented') return
     const rect = bodyRef.current.getBoundingClientRect()
     const scaleX = BW / rect.width
     const scaleY = BH / rect.height
@@ -543,24 +568,11 @@ export default function LeadPlacementLab() {
           <div>
             <h3 className="text-sm font-semibold text-white mb-1">Lead Placement Lab</h3>
             <p className="text-xs text-gray-400 leading-relaxed max-w-lg">
-              Drag the <span className="text-blue-400 font-semibold">+ (positive)</span> and{' '}
-              <span className="text-amber-400 font-semibold">− (negative)</span> electrodes anywhere
-              on the body. Each electrode reads its own voltage (shown right below it); the ECG
-              strip plots <span className="text-white">ΔV = V(+) − V(−)</span>.
-              The <span className="text-amber-400">Cardiac Vector Axis</span> slider below rotates the
-              vector itself — the other way to change the relationship, without moving electrodes.
+              Explore a movable electrode pair or select an augmented limb lead.
+              The ECG plots ΔV = V(+) − V(−). Cardiac Vector Axis rotates the source.
             </p>
           </div>
-          <button
-            onClick={() => setShowEinthoven(v => !v)}
-            className={`shrink-0 px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
-              showEinthoven
-                ? 'bg-indigo-950/60 text-indigo-300 border-indigo-700/50'
-                : 'bg-gray-800 text-gray-500 border-gray-700'
-            }`}
-          >
-            Einthoven overlay
-          </button>
+
         </div>
       </div>
 
@@ -643,11 +655,21 @@ export default function LeadPlacementLab() {
             separate full-width section underneath everything. */}
         <div className="flex-1 min-w-0">
           <div className="relative">
+            <div className="px-3 py-2 bg-gray-900/60 flex items-center gap-2 flex-wrap text-xs">
+              <label htmlFor="lead-overlay" className="text-gray-400">Lead diagram</label>
+              <select id="lead-overlay" value={overlay} onChange={e => setOverlay(e.target.value)} className="bg-gray-950 border border-gray-700 rounded px-2 py-1 text-gray-200">
+                <option value="none">None</option><option value="standard">I–III</option><option value="augmented">Augmented</option>
+              </select>
+              {overlay === 'augmented' && <select aria-label="Augmented lead" value={augmentedLead} onChange={e => setAugmentedLead(e.target.value)} className="bg-gray-950 border border-gray-700 rounded px-2 py-1 text-gray-200">
+                {Object.keys(AUGMENTED).map(lead => <option key={lead}>{lead}</option>)}
+              </select>}
+              <span className="text-gray-400">{overlay === 'augmented' ? `${augmentedLead} = ${AUGMENTED[augmentedLead].positive} − (${AUGMENTED[augmentedLead].reference.join(' + ')}) / 2` : 'Drag + and − to explore'}</span>
+            </div>
             <canvas
               ref={bodyRef}
               width={BW}
               height={BH}
-              style={{ width: '100%', maxWidth: BW, display: 'block', cursor: 'grab', backgroundColor: '#030712' }}
+              style={{ width: '100%', maxWidth: BW, display: 'block', cursor: overlay === 'augmented' ? 'default' : 'grab', backgroundColor: '#030712' }}
               onMouseDown={onMouseDown}
               onMouseMove={onMouseMove}
               onMouseUp={onMouseUp}
@@ -657,9 +679,9 @@ export default function LeadPlacementLab() {
               onTouchEnd={onMouseUp}
             />
             {/* Floating annotation */}
-            <div className="absolute bottom-3 left-3 right-3 pointer-events-none">
+            <div className="px-3 py-2 pointer-events-none">
               <p className="text-xs text-gray-600 text-center font-mono">
-                drag electrodes to any position
+                {overlay === 'augmented' ? 'Dashed lines combine electrode potentials into a calculated reference' : 'Electrode spacing is schematic; explore lead direction'}
               </p>
             </div>
           </div>
@@ -692,7 +714,7 @@ export default function LeadPlacementLab() {
             <div className="rounded-lg bg-gray-900/70 border border-gray-800 px-2.5 py-2">
               <p className="text-xs text-gray-500 mb-1">Electrode voltages</p>
               <p className="text-xs font-mono tabular-nums"><span className="text-blue-400">V(+)</span> <span ref={vPlusRef} className="text-blue-300">—</span></p>
-              <p className="text-xs font-mono tabular-nums"><span className="text-amber-400">V(−)</span> <span ref={vMinusRef} className="text-amber-300">—</span></p>
+              <p className="text-xs font-mono tabular-nums"><span className="text-amber-400">{overlay === 'augmented' ? 'V(reference)' : 'V(−)'}</span> <span ref={vMinusRef} className="text-amber-300">—</span></p>
             </div>
             <div>
               <p className="text-xs text-gray-500 mb-0.5">ΔV = V(+) − V(−)</p>
@@ -714,7 +736,7 @@ export default function LeadPlacementLab() {
               Rotating the source can also change its sign while the connections stay fixed.</p>
           </Explanation>
 
-          {showEinthoven && (
+          {overlay !== 'none' && (
             <div className="border-t border-gray-800 pt-3">
               <AxisSummaryPanel angleDeg={rotatedAxis.angleDeg} leadIMm={rotatedAxis.leadIMm} leadAVFMm={rotatedAxis.leadAVFMm} />
             </div>
