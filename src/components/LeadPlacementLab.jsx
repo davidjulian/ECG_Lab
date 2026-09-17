@@ -350,7 +350,7 @@ export default function LeadPlacementLab() {
         const extend = 600
         const ax = CX - ux * extend, ay = CY - uy * extend
         const bx = CX + ux * extend, by = CY + uy * extend
-        bCtx.strokeStyle = 'rgba(100,116,139,0.35)'
+        bCtx.strokeStyle = '#ffffff'
         bCtx.lineWidth   = 1
         bCtx.setLineDash([8, 6])
         bCtx.beginPath()
