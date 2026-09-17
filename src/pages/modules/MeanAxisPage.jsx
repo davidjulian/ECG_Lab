@@ -40,7 +40,7 @@ export default function MeanAxisPage() {
   const accumulated = averageVector(rotation, shownTime)
   const samples = Array.from({ length: 201 }, (_, i) => ({ t: i / 2, v: vectorAt(i / 2, rotation) }))
   const trailPoints = samples.filter(s => s.t <= shownTime).map(s => `${200 + s.v.x * 100},${190 + s.v.y * 100}`).join(' ')
-  return <ModulePage number={4} title="Mean Axis" wide
+  return <ModulePage category="Advanced" title="Mean Axis" wide
     description="Play or scrub through ventricular depolarization. Compare the six lead traces, predict the average direction, then reveal the mean vector to check.">
     <div className="rounded-xl border border-gray-700 bg-gray-950 p-4 space-y-4">
       <div className="flex flex-wrap items-center gap-2">

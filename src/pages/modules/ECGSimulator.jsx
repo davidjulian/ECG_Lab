@@ -431,7 +431,7 @@ export default function ECGSimulator() {
   return (
     <ModulePage
       moduleId="ECG"
-      number={5}
+      number={4}
       title="ECG Simulator"
       description="Use the physiological parameter controls to explore how changes in each cardiac structure affect the ECG. Compare the traces and measurements before opening optional explanations."
       wide
