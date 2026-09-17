@@ -1,12 +1,12 @@
 import Explanation from './Explanation'
-﻿import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { ECGVoltage, buildRhythmFromParams, meanQRSAxis } from '../lib/ECGEngine'
 import { AxisSummaryPanel } from './MeanAxisPanel'
 
 function PlayIcon()  { return <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg> }
 function PauseIcon() { return <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M7 5h4v14H7zm6 0h4v14h-4z"/></svg> }
 
-const SPEEDS = [0.1, 0.25, 0.4, 0.7, 1]
+const SPEEDS = [0.25, 0.5, 1]
 
 // ── Canvas sizes ──────────────────────────────────────────────────────────────
 // RENDER_SCALE resizes the actual rendered canvases relative to the
@@ -38,7 +38,7 @@ const BL    = 0.62          // baseline y-fraction in ECG canvas
 
 // Slows the whole animation down relative to real time so the cardiac vector
 // and its projection are easier to follow (1 = real-time heart rate).
-const TIME_SCALE = 0.4
+const TIME_SCALE = 0.5
 
 // Pre-built rhythm (normal sinus, constant — only lead axis changes)
 const RHYTHM = buildRhythmFromParams({
@@ -459,7 +459,7 @@ export default function LeadPlacementLab() {
       const by = EH_L * BL
       eCtx.beginPath()
       for (let x = 0; x <= EW_L; x++) {
-        const v = ECGVoltage(elapsed - (EW_L - x) / PX_MS, cycleMs, waves, leadAxisDeg - rot, nativeCycleMs)
+        const v = ECGVoltage(x / PX_MS, cycleMs, waves, leadAxisDeg - rot, nativeCycleMs)
         const y = by - v * PX_MV
         if (x === 0) eCtx.moveTo(x, y); else eCtx.lineTo(x, y)
       }
@@ -467,6 +467,22 @@ export default function LeadPlacementLab() {
       eCtx.lineWidth   = 2
       eCtx.lineJoin    = 'round'
       eCtx.stroke()
+
+      // Sweep through a complete central beat using the same phase as the
+      // instantaneous cardiac vector. The trace stays still for inspection.
+      const cursorCycle = Math.max(0, Math.round((EW_L / PX_MS / cycleMs - 1) / 2))
+      const cursorX = (cursorCycle * cycleMs + tMs) * PX_MS
+      const cursorY = by - dotProd * PX_MV
+      eCtx.strokeStyle = '#a5b4fc'
+      eCtx.lineWidth = 1.5
+      eCtx.beginPath()
+      eCtx.moveTo(cursorX, 0)
+      eCtx.lineTo(cursorX, EH_L)
+      eCtx.stroke()
+      eCtx.fillStyle = '#a5b4fc'
+      eCtx.beginPath()
+      eCtx.arc(cursorX, cursorY, 3.5, 0, Math.PI * 2)
+      eCtx.fill()
 
       animId = requestAnimationFrame(frame)
     }
@@ -594,7 +610,8 @@ export default function LeadPlacementLab() {
           onTouchStart={() => { scrubbingRef.current = true; setPlaying(false) }}
           onMouseUp={() => { scrubbingRef.current = false }}
           onTouchEnd={() => { scrubbingRef.current = false }}
-          onChange={e => { simTimeRef.current = Number(e.target.value) }}
+          onChange={e => { setPlaying(false); simTimeRef.current = Number(e.target.value) }}
+          aria-label="Cycle time"
           className="flex-1 min-w-[120px] accent-cyan-500"
         />
         <span ref={scrubLabelRef} className="text-xs font-mono text-gray-500 tabular-nums w-28 text-right">
@@ -651,6 +668,7 @@ export default function LeadPlacementLab() {
           <div className="border-t border-gray-800">
             <div className="flex items-center gap-3 px-3 pt-2.5 pb-1">
               <p className="text-xs uppercase tracking-widest text-gray-600">Live ECG output</p>
+              <span className="text-xs text-indigo-300">Line = current instant</span>
 
             </div>
             <canvas
