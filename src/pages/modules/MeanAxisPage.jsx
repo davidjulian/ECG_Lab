@@ -18,7 +18,7 @@ function Arrow({ vector, color, dashed = false }) {
 export default function MeanAxisPage() {
   const [time, setTime] = useState(0)
   const [playing, setPlaying] = useState(false)
-  const [speed, setSpeed] = useState(0.5)
+  const [speed, setSpeed] = useState(1)
   const [rotation, setRotation] = useState(0)
   const [reveal, setReveal] = useState(false)
   const [angles, setAngles] = useState(false)
