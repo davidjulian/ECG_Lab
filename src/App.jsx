@@ -3,7 +3,7 @@ import { FreePlayLayout } from './components/layout/Layouts'
 import PhysicsFoundations from './pages/modules/PhysicsFoundations'
 import ECGSimulator from './pages/modules/ECGSimulator'
 import PatientScenarios from './pages/modules/PatientScenarios'
-import { RecordingsPage, VectorCyclePage } from './pages/modules/CardiacBridge'
+import { RecordingsPage } from './pages/modules/CardiacBridge'
 import LeadsPage from './pages/modules/LeadsPage'
 
 import MeanAxisPage from './pages/modules/MeanAxisPage'
@@ -14,9 +14,10 @@ export default function App() {
       <Route path="/play" element={<FreePlayLayout />}>
         <Route index element={<Navigate to="recordings" replace />} />
         <Route path="recordings" element={<RecordingsPage />} />
-        <Route path="mean-axis" element={<MeanAxisPage />} />
+        <Route path="cardiac-vectors" element={<MeanAxisPage />} />
+        <Route path="mean-axis" element={<Navigate to="/play/cardiac-vectors" replace />} />
         <Route path="leads" element={<LeadsPage />} />
-        <Route path="vector-cycle" element={<VectorCyclePage />} />
+        <Route path="vector-cycle" element={<Navigate to="/play/cardiac-vectors" replace />} />
         <Route path="physics" element={<PhysicsFoundations />} />
         <Route path="ECG" element={<ECGSimulator />} />
         <Route path="scenarios" element={<PatientScenarios />} />

@@ -1,4 +1,4 @@
-// Illustrative frontal QRS model, independent of the physiology simulator.
+// Illustrative frontal cardiac vector model, independent of the physiology simulator.
 // Smooth regional contributions create a changing vector; units are mV-equivalent.
 export const QRS_MS = 100
 export const FRONTAL_LEADS = [
@@ -31,4 +31,28 @@ export function averageVector(rotation = 0, through = QRS_MS) {
     y += (a.y + b.y) * (next - t) / 2 / QRS_MS
   }
   return { x, y, angle: Math.atan2(y, x) * 180 / Math.PI }
+}
+
+// One shared full-cycle source: the QRS window is exactly vectorAt(t - QRS_START).
+export const CYCLE_MS = 800
+export const QRS_START = 200
+export const PHASES = [
+  { name: 'P', start: 40, end: 140, color: '#60a5fa', description: 'Atrial depolarization' },
+  { name: 'QRS', start: QRS_START, end: QRS_START + QRS_MS, color: '#c4b5fd', description: 'Ventricular depolarization' },
+  { name: 'T', start: 380, end: 580, color: '#fb923c', description: 'Ventricular repolarization' },
+]
+export function cycleVectorAt(time, rotation = 0) {
+  const qrs = vectorAt(time - QRS_START, rotation)
+  // Overlapping contributions with different orientations give P and T changing directions.
+  const components = [
+    { start: 40, end: 115, amplitude: 0.12, angle: 30 },
+    { start: 65, end: 140, amplitude: 0.13, angle: 80 },
+    { start: 380, end: 540, amplitude: 0.24, angle: 35 },
+    { start: 420, end: 580, amplitude: 0.20, angle: 85 },
+  ]
+  return components.reduce((v, c) => {
+    const phase = (time - c.start) / (c.end - c.start)
+    const magnitude = phase > 0 && phase < 1 ? c.amplitude * Math.sin(Math.PI * phase) ** 2 : 0
+    return { x: v.x + magnitude * Math.cos(rad(c.angle + rotation)), y: v.y + magnitude * Math.sin(rad(c.angle + rotation)) }
+  }, qrs)
 }
