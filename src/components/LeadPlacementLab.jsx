@@ -63,8 +63,13 @@ const AUGMENTED = {
 }
 
 // ── Drawing helpers ───────────────────────────────────────────────────────────
-// Front-facing figure with a natural stance. Limb connections are schematic.
-const BODY_POINTS = [[48,111],[30,117],[16,171],[29,175],[44,139],[42,177],[38,239],[55,239],[62,188],[69,239],[86,239],[82,177],[80,139],[95,175],[108,171],[94,117],[76,111]].map(([x,y]) => ({x:168+2*x,y:-79.5+1.5*y}))
+// Head and torso only: the same polygon defines the visible torso and drag area.
+// Reference sites retain their geometry, so lead projections remain unchanged.
+const BODY_POINTS = [
+  [278,80],[306,80],[306,86],[350,96],[350,119],
+  [337,143],[336,182],[343,215],[241,215],[248,182],
+  [247,143],[234,119],[234,96],[278,86],
+].map(([x,y]) => ({x,y}))
 function onBody(x,y) {
   let inside=false
   for(let i=0,j=BODY_POINTS.length-1;i<BODY_POINTS.length;j=i++) {
@@ -288,7 +293,7 @@ export default function LeadPlacementLab() {
       bCtx.fillStyle = '#64748b'
       bCtx.font = '11px sans-serif'
       bCtx.textAlign = 'center'
-      bCtx.fillText('Simplified electrode locations · front view', 310, 18)
+      bCtx.fillText('Schematic torso · front view', 310, 18)
       drawBody(bCtx)
       if (overlayRef.current !== 'none') drawConnections(bCtx, augmented)
 
@@ -637,7 +642,7 @@ export default function LeadPlacementLab() {
                 {Object.keys(AUGMENTED).map(lead => <option key={lead}>{lead}</option>)}
               </select>}
               {overlay === 'standard' && EIN_LEADS.map(({a,b,label}) => <button key={label} onClick={() => { elec.current = { minus: {...EIN[a]}, plus: {...EIN[b]} } }} className="border border-gray-700 rounded px-2 py-1 text-gray-200">{label}</button>)}
-              <span className="text-gray-400">{overlay === 'augmented' ? `${augmentedLead} = ${AUGMENTED[augmentedLead].positive} − (${AUGMENTED[augmentedLead].reference.join(' + ')}) / 2` : 'Drag + and − on the figure'}</span>
+              <span className="text-gray-400">{overlay === 'augmented' ? `${augmentedLead} = ${AUGMENTED[augmentedLead].positive} − (${AUGMENTED[augmentedLead].reference.join(' + ')}) / 2` : 'Drag + and − on the torso'}</span>
             </div>
             <canvas
               ref={bodyRef}
@@ -654,6 +659,7 @@ export default function LeadPlacementLab() {
             />
             {/* Floating annotation */}
             <div className="px-3 py-2 pointer-events-none">
+              <p className="text-xs text-gray-300 text-center mb-1">Schematic electrode positions for exploring lead direction.</p>
               <p className="text-xs text-gray-400 text-center font-mono">
                 {overlay === 'augmented' ? 'Dashed lines combine electrode potentials into a calculated reference' : 'Dashed axis passes through the cardiac origin, parallel to the electrode connection'}
               </p>
@@ -703,7 +709,7 @@ export default function LeadPlacementLab() {
           </div>
 
           <Explanation>
-            <p>Electrode connections show simplified body placement, not the conventional equilateral Einthoven model. These illustrative voltages use a projection model, not an anatomical volume conductor. The dashed axis is parallel to the electrode connection and passes through the cardiac origin. The lead records the projection of the cardiac vector onto its direction.
+            <p>RA, LA, and LL mark schematic reference positions near the shoulders and left lower torso. The head provides orientation; movable electrodes stay on the torso. Electrode connections show simplified placement, not the conventional equilateral Einthoven model. These illustrative voltages use a projection model, not an anatomical volume conductor. The dashed axis is parallel to the electrode connection and passes through the cardiac origin. The lead records the projection of the cardiac vector onto its direction.
               A parallel vector gives the largest positive contribution, a perpendicular vector
               gives zero contribution at that instant, and an opposite vector gives a negative contribution.</p>
             <p className="mt-2">Exchanging the recording connections reverses the sign of ΔV.
