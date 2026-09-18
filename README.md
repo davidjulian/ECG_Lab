@@ -27,7 +27,7 @@ Production build: `npm run build`. Local build preview: `npm run preview`.
 
 ## GitHub Pages
 
-The app uses hash routing and the `/ECG_lab/` base path. The included workflow builds and deploys pushes to `main` after GitHub Pages is configured to use GitHub Actions in the repository settings.
+The app uses hash routing and the `/ECG_Lab/` base path. The included workflow builds and deploys pushes to `main` after GitHub Pages is configured to use GitHub Actions in the repository settings.
 
 ## Credits and provenance
 
@@ -37,7 +37,7 @@ Original repository: https://github.com/jwalker2124/pcb3713C-ECG-Lab
 
 Source revision: `22a2932c9e87e8dfa80c8a342fcf805b6427ebb8` (Module 1E UI changes).
 
-ECG Lab repository: https://github.com/davidjulian/ECG_lab
+ECG Lab repository: https://github.com/davidjulian/ECG_Lab
 
 The original Git history is retained. Original sections 2C and 2E are integrated into the new sequence. Remaining original module 2 and development components stay outside the app navigation. Simulation and case content are inherited from the source app; this initial adaptation does not constitute a scientific review of that content.
 
