@@ -7,12 +7,15 @@ export default function Sidebar() {
   const location = useLocation()
   const { tabInfo } = useModuleTabsContext()
   return (
-    <aside className="w-60 shrink-0 bg-gray-900 border-r border-gray-800 flex flex-col h-screen sticky top-0">
-      <div className="px-4 py-4 border-b border-gray-800">
-        <div className="flex items-center gap-2">
-          <svg viewBox="0 0 48 24" className="w-8 h-4" fill="none"><polyline points="0,12 8,12 12,4 16,20 20,2 24,22 28,12 48,12" stroke="#10b981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
-          <span className="text-gray-300 text-xs font-medium">ECG Lab</span>
+    <aside className="w-64 shrink-0 bg-gray-900 border-r border-gray-800 flex flex-col h-screen sticky top-0">
+      <div className="px-5 py-5 border-b border-gray-800">
+        <div className="flex items-center gap-2 mb-2">
+          <svg viewBox="0 0 48 24" className="w-9 h-5" fill="none" aria-hidden="true"><polyline points="0,12 8,12 12,4 16,20 20,2 24,22 28,12 48,12" stroke="#10b981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
+          <span className="text-gray-100 text-sm font-semibold">ECG Lab</span>
         </div>
+        <p className="text-sm text-gray-300 leading-relaxed">
+          Extracellular recordings, electric fields, and cardiac physiology
+        </p>
       </div>
       <nav className="flex-1 overflow-y-auto px-2 py-3 space-y-0.5">
         {MODULES.map((info, index) => {
