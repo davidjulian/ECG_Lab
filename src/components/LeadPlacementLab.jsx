@@ -554,7 +554,7 @@ export default function LeadPlacementLab() {
       </div>
 
       {/* Playback controls */}
-      <div className="px-3 py-1.5 border-b border-gray-800 flex items-center gap-4 flex-wrap">
+      <div className="px-3 py-1.5 border-b border-gray-800 flex items-center gap-3 flex-wrap">
         <button
           onClick={() => setPlaying(v => !v)}
           className={`shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
@@ -583,11 +583,7 @@ export default function LeadPlacementLab() {
             </button>
           ))}
         </div>
-      </div>
-
-      {/* Scrub through the cardiac cycle */}
-      <div className="px-3 py-1.5 border-b border-gray-800 flex items-center gap-3">
-        <span className="text-xs uppercase tracking-widest text-gray-600 shrink-0">Scrub</span>
+        <span className="text-xs text-gray-400 shrink-0">Cycle time</span>
         <input
           ref={scrubRef}
           type="range"

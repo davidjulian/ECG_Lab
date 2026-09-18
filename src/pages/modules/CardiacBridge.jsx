@@ -1872,6 +1872,47 @@ function ECGVsAPSection({ rhythm }) {
 
   return (
     <div>
+      {/* Controls — shared clock drives both traces */}
+      <div className="flex items-center gap-3 flex-wrap mb-3">
+        <button
+          onClick={toggle}
+          className="px-4 py-1.5 rounded-lg text-xs font-medium border border-gray-700 bg-gray-800 hover:bg-gray-700 text-white transition-colors"
+        >
+          {isPlaying ? 'Pause' : 'Play'}
+        </button>
+        <div className="flex items-center gap-1.5" role="group" aria-label="Playback speed">
+          <span className="text-xs uppercase tracking-widest text-gray-500">Speed</span>
+          {[0.25, 0.5, 1].map(value => (
+            <button key={value} onClick={() => setSpeed(value)} aria-pressed={speed === value}
+              className={`px-2 py-1 rounded-md text-xs font-mono border transition-colors ${
+                speed === value ? 'bg-indigo-950/60 text-indigo-300 border-indigo-700/50' : 'text-gray-500 border-gray-700 hover:text-gray-300'
+              }`}>
+              {value}×
+            </button>
+          ))}
+        </div>
+        <input
+          type="range"
+          min={xDomain[0]}
+          max={xDomain[1]}
+          value={Math.min(Math.max(tMs, xDomain[0]), xDomain[1])}
+          aria-label="Cycle time"
+          onChange={e => { setPlaying(false); scrub(Number(e.target.value)) }}
+          className="flex-1 min-w-[120px] accent-emerald-500"
+        />
+        <span className="text-xs font-mono text-gray-500 tabular-nums w-24">{Math.round(tMs)} / {cycleMs} ms</span>
+        <button
+          onClick={handleZoom}
+          className={`px-4 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
+            zoomed
+              ? 'bg-emerald-950/60 text-emerald-300 border-emerald-700/50'
+              : 'bg-gray-800 text-gray-500 border-gray-700 hover:text-gray-300'
+          }`}
+        >
+          {zoomed ? 'Exit Zoom' : 'Zoom to QRS'}
+        </button>
+      </div>
+
       {/* TOP — the heart itself: drag the electrode here */}
       <div className="rounded-xl border border-gray-800 bg-gray-900/60 p-4 flex flex-col items-center">
         <p className="text-xs text-gray-500 mb-3 text-center max-w-md">
@@ -1935,46 +1976,6 @@ function ECGVsAPSection({ rhythm }) {
             Left: voltage across one cell membrane (intracellular electrode required). Right: voltage difference between body surface electrodes. An equivalent cardiac dipole helps explain this measurement.
           </p>
         </div>
-      </div>
-
-      {/* Controls — shared clock drives both traces */}
-      <div className="flex items-center gap-3 flex-wrap mt-3">
-        <button
-          onClick={toggle}
-          className="px-4 py-1.5 rounded-lg text-xs font-medium border border-gray-700 bg-gray-800 hover:bg-gray-700 text-white transition-colors"
-        >
-          {isPlaying ? 'Pause' : 'Play'}
-        </button>
-        <div className="flex items-center gap-1.5" role="group" aria-label="Playback speed">
-          <span className="text-xs uppercase tracking-widest text-gray-500">Speed</span>
-          {[0.25, 0.5, 1].map(value => (
-            <button key={value} onClick={() => setSpeed(value)} aria-pressed={speed === value}
-              className={`px-2 py-1 rounded-md text-xs font-mono border transition-colors ${
-                speed === value ? 'bg-indigo-950/60 text-indigo-300 border-indigo-700/50' : 'text-gray-500 border-gray-700 hover:text-gray-300'
-              }`}>
-              {value}×
-            </button>
-          ))}
-        </div>
-        <input
-          type="range"
-          min={xDomain[0]}
-          max={xDomain[1]}
-          value={Math.min(Math.max(tMs, xDomain[0]), xDomain[1])}
-          onChange={e => scrub(Number(e.target.value))}
-          className="flex-1 min-w-[120px] accent-emerald-500"
-        />
-        <span className="text-xs font-mono text-gray-500 tabular-nums w-24">{Math.round(tMs)} / {cycleMs} ms</span>
-        <button
-          onClick={handleZoom}
-          className={`px-4 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
-            zoomed
-              ? 'bg-emerald-950/60 text-emerald-300 border-emerald-700/50'
-              : 'bg-gray-800 text-gray-500 border-gray-700 hover:text-gray-300'
-          }`}
-        >
-          {zoomed ? 'Exit Zoom' : 'Zoom to QRS'}
-        </button>
       </div>
 
       {zoomed && (

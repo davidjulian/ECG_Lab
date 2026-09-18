@@ -69,9 +69,10 @@ function ForwardLink({ children, onNext }) {
   )
 }
 
-function CanvasWrap({ containerRef, children }) {
+function CanvasWrap({ containerRef, children, toolbar }) {
   return (
     <div className="rounded-xl overflow-hidden border border-gray-800 mb-4">
+      {toolbar}
       <div ref={containerRef} />
       {children}
     </div>
@@ -850,8 +851,8 @@ function SimCells() {
   }, [])
 
   return (
-    <CanvasWrap containerRef={containerRef}>
-      <SimBar>
+    <CanvasWrap containerRef={containerRef} toolbar={
+      <div className="flex items-center gap-3 flex-wrap px-3 py-2 text-xs bg-gray-900/80">
         <button
           onClick={() => setPlaying(v => !v)}
           className={`shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
@@ -875,7 +876,29 @@ function SimCells() {
             </button>
           ))}
         </div>
-      </SimBar>
+
+        <span className="text-xs uppercase tracking-widest text-gray-600 shrink-0">Time</span>
+        <input
+          ref={scrubRef}
+          type="range"
+          min={0}
+          max={CELL_CYCLE_MS}
+          defaultValue={0}
+          step={1}
+          onMouseDown={() => { scrubbingRef.current = true; setPlaying(false) }}
+          onTouchStart={() => { scrubbingRef.current = true; setPlaying(false) }}
+          onMouseUp={() => { scrubbingRef.current = false }}
+          onTouchEnd={() => { scrubbingRef.current = false }}
+          onChange={e => jumpTo(Number(e.target.value))}
+          aria-label="Time"
+          className="flex-1 min-w-[120px] accent-emerald-500"
+        />
+        <span ref={scrubLabelRef} className="text-xs font-mono text-gray-500 tabular-nums w-28 text-right">
+          0 / {CELL_CYCLE_MS} ms
+        </span>
+      </div>
+    }>
+
       <SimBar>
         <span><span className="text-blue-400">+ outside: resting (polarized)</span> · <span className="text-amber-400">− outside: depolarized</span></span>
       </SimBar>
@@ -889,27 +912,6 @@ function SimCells() {
           <button key={angle} onClick={() => rotateLead(angle)}
             className={`px-2 py-1 rounded border ${leadAngle === angle ? 'border-teal-600 text-teal-300' : 'border-gray-700 text-gray-400'}`}>{angle}°</button>
         ))}
-      </SimBar>
-      <SimBar>
-        <span className="text-xs uppercase tracking-widest text-gray-600 shrink-0">Scrub</span>
-        <input
-          ref={scrubRef}
-          type="range"
-          min={0}
-          max={CELL_CYCLE_MS}
-          defaultValue={0}
-          step={1}
-          onMouseDown={() => { scrubbingRef.current = true; setPlaying(false) }}
-          onTouchStart={() => { scrubbingRef.current = true; setPlaying(false) }}
-          onMouseUp={() => { scrubbingRef.current = false }}
-          onTouchEnd={() => { scrubbingRef.current = false }}
-          onChange={e => jumpTo(Number(e.target.value))}
-          aria-label="Cycle time"
-          className="flex-1 min-w-[120px] accent-emerald-500"
-        />
-        <span ref={scrubLabelRef} className="text-xs font-mono text-gray-500 tabular-nums w-28 text-right">
-          0 / {CELL_CYCLE_MS} ms
-        </span>
       </SimBar>
     </CanvasWrap>
   )
@@ -1201,7 +1203,7 @@ export default function PhysicsFoundations() {
       {active === '2D' && (
         <Section label="2D" title="Compare cell states and extracellular recordings">
           <p className="text-xs text-gray-400 leading-snug mb-2">
-            Drag either electrode to rotate the lead. Use Play or Scrub to follow the wave.
+            Drag either electrode to rotate the lead. Use Play or the time slider to follow the wave.
             Electrode positions are schematic; recordings are calculated farther from the cells.
           </p>
 

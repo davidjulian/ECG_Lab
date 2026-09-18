@@ -534,6 +534,9 @@ function ECGStrip({ rhythm }) {
   const lastRef    = useRef(null)
   const rafRef     = useRef(null)
 
+  const [speed, setSpeed] = useState(1)
+  const speedRef = useRef(speed)
+  useEffect(() => { speedRef.current = speed }, [speed])
   const [playing, setPlaying] = useState(true)
   const playingRef = useRef(playing)
   useEffect(() => { playingRef.current = playing }, [playing])
@@ -559,7 +562,7 @@ function ECGStrip({ rhythm }) {
 
     function frame(now) {
       if (lastRef.current !== null && playingRef.current && !scrubbingRef.current) {
-        elapsedRef.current += (now - lastRef.current)
+        elapsedRef.current += (now - lastRef.current) * speedRef.current
       }
       lastRef.current = now
       const tMs = ((elapsedRef.current % cycleMs) + cycleMs) % cycleMs
@@ -580,11 +583,7 @@ function ECGStrip({ rhythm }) {
 
   return (
     <div>
-      <canvas ref={canvasRef} width={SW} height={SH}
-        className="w-full rounded-lg block"
-        style={{ maxWidth: SW, background: '#111827' }}
-      />
-      <div className="flex items-center gap-3 mt-1.5 flex-wrap">
+      <div className="flex items-center gap-3 mb-2 flex-wrap">
         <button
           onClick={() => setPlaying(v => !v)}
           className={`shrink-0 px-2.5 py-1 rounded-md text-xs font-medium border transition-colors ${
@@ -593,6 +592,12 @@ function ECGStrip({ rhythm }) {
         >
           {playing ? 'Pause' : 'Play'}
         </button>
+        <div className="flex items-center gap-1.5" role="group" aria-label="Playback speed">
+          <span className="text-xs text-gray-400">Speed</span>
+          {[0.25, 0.5, 1].map(value => <button key={value} onClick={() => setSpeed(value)} aria-pressed={speed === value}
+            className={`px-2 py-1 rounded-md text-xs border ${speed === value ? 'bg-indigo-950/60 text-indigo-300 border-indigo-700/50' : 'text-gray-400 border-gray-700'}`}>{value}×</button>)}
+        </div>
+        <span className="text-xs text-gray-400">Time</span>
         <input
           ref={scrubRef}
           type="range"
@@ -604,13 +609,18 @@ function ECGStrip({ rhythm }) {
           onTouchStart={() => { scrubbingRef.current = true; setPlaying(false) }}
           onMouseUp={() => { scrubbingRef.current = false }}
           onTouchEnd={() => { scrubbingRef.current = false }}
-          onChange={e => { elapsedRef.current = Number(e.target.value) }}
+          aria-label="Time"
+          onChange={e => { setPlaying(false); elapsedRef.current = Number(e.target.value) }}
           className="flex-1 min-w-[100px] accent-emerald-500"
         />
         <span ref={scrubLabelRef} className="text-xs font-mono text-gray-500 tabular-nums w-24 text-right shrink-0">
           0 / {cycleMs} ms
         </span>
-      </div>
+      </div>      <canvas ref={canvasRef} width={SW} height={SH}
+        className="w-full rounded-lg block"
+        style={{ maxWidth: SW, background: '#111827' }}
+      />
+
     </div>
   )
 }

@@ -55,15 +55,16 @@ export default function MeanAxisPage() {
       <div className="flex gap-2" role="group" aria-label="Time window">
         {[['full', 'Full cycle'], ['qrs', 'QRS complex']].map(([id, label]) => <button key={id} className={button} aria-pressed={view === id} style={view === id ? { background: '#115e59' } : undefined} onClick={() => changeView(id)}>{label}</button>)}
       </div>
-      <div className="flex flex-wrap items-center gap-2">
+      <div className="flex flex-wrap items-center gap-3">
         <button className={button} onClick={() => setPlaying(!playing)}>{playing ? 'Pause' : 'Play'}</button>
-        {[0.025, 0.05, 0.1].map(s => <button key={s} className={button} aria-pressed={speed === s} style={speed === s ? { background: '#115e59' } : undefined} onClick={() => setSpeed(s)}>{s}×</button>)}
-        <span className="text-xs text-gray-400 ml-2">Playback relative to real time · 0.1× shows 100 ms in 1 second.</span>
+        <div className="flex items-center gap-1.5" role="group" aria-label="Playback speed">
+          <span className="text-xs text-gray-400">Speed</span>
+          {[0.025, 0.05, 0.1].map(s => <button key={s} className={button} aria-pressed={speed === s} style={speed === s ? { background: '#115e59' } : undefined} onClick={() => setSpeed(s)}>{s}×</button>)}
+        </div>
+        <span className="text-xs text-gray-400">Cycle time</span>
+        <input aria-label="Cycle time" className="flex-1 min-w-[120px] accent-teal-400" type="range" min={start} max={end} step="0.5" value={shownTime} onChange={e => { setPlaying(false); setTime(Number(e.target.value)) }} />
+        <span className="text-xs text-gray-400 font-mono tabular-nums">{shownTime.toFixed(0)} / {CYCLE_MS} ms</span>
       </div>
-      <label className="flex items-center gap-3 text-sm text-gray-300">Cycle time
-        <input className="flex-1 accent-teal-400" type="range" min={start} max={end} step="0.5" value={shownTime} onChange={e => { setPlaying(false); setTime(Number(e.target.value)) }} />
-        <span className="w-24 text-right font-mono">{shownTime.toFixed(0)} ms</span>
-      </label>
       <div className="grid lg:grid-cols-[minmax(280px,0.85fr)_minmax(320px,1.15fr)] gap-5">
         <div>
           <h2 className="text-sm font-semibold text-gray-100">Frontal electrical vectors</h2>
@@ -129,8 +130,8 @@ export default function MeanAxisPage() {
         </label>
         <div className="flex flex-wrap gap-3 items-center">
           <button className={button} onClick={() => setReveal(!reveal)}>{reveal ? 'Hide mean QRS vector' : 'Reveal mean QRS vector'}</button>
-          <button className={button} onClick={() => { setPlaying(false); setTime(start); setRotation(0); setReveal(false) }}>Reset</button>
-          <p className="text-xs text-gray-400">Rotate the source, then predict again using the lead traces.</p>
+          <button className={button} onClick={() => { setPlaying(false); setTime(start); setRotation(0); setReveal(false) }}>Reset settings</button>
+          <p className="text-xs text-gray-400">Playback speeds are relative to real time. Rotate the source, then predict again using the lead traces.</p>
         </div>
       </div>
     </div>

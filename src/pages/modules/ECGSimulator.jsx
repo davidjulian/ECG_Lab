@@ -306,6 +306,10 @@ function NoteChip({ level }) {
 
 // ── Main component ────────────────────────────────────────────────────────────
 export default function ECGSimulator() {
+  const [playing, setPlaying] = useState(true)
+  const [speed, setSpeed] = useState(1)
+  const playbackRef = useRef({ playing: true, speed: 1 })
+  useEffect(() => { playbackRef.current = { playing, speed } }, [playing, speed])
   const [params, setParams]   = useState(DEFAULT)
   const [leadId, setLeadId]   = useState('II')
   const [physRhythm, setPhysRhythm] = useState(() => buildRhythmFromPhysiology(DEFAULT))
@@ -333,13 +337,13 @@ export default function ECGSimulator() {
   useEffect(() => {
     const canvas = canvasRef.current
     const ctx    = canvas.getContext('2d')
-    let animId, t0 = null
+    let animId, lastTs = null, elapsedMs = 0
 
     const render = (ts) => {
-      if (t0 === null) t0 = ts
+      if (lastTs !== null && playbackRef.current.playing) elapsedMs += (ts - lastTs) * playbackRef.current.speed
+      lastTs = ts
       const { rhythm, leadId: lid } = activeRef.current
       const { cycleMs, nativeCycleMs } = rhythm
-      const elapsedMs = ts - t0
       // Same warpTime() jitter the trace applies (via ECGVoltage) before its
       // own modulo, so the heart animation's notion of "where in the cycle
       // we are" stays phase-locked with what's actually drawn, not just
@@ -443,6 +447,14 @@ export default function ECGSimulator() {
 
           {/* ── ECG strip + conduction animation ───────────────────────── */}
           <div className="flex-1 min-w-0 rounded-xl bg-gray-950 border border-gray-800 p-3">
+            <div className="flex items-center gap-3 flex-wrap mb-3">
+              <button onClick={() => setPlaying(v => !v)} className="px-3 py-1.5 rounded-lg text-xs border border-gray-700 bg-gray-800 text-white">{playing ? 'Pause' : 'Play'}</button>
+              <div className="flex items-center gap-1.5" role="group" aria-label="Playback speed">
+                <span className="text-xs text-gray-400">Speed</span>
+                {[0.25, 0.5, 1].map(value => <button key={value} onClick={() => setSpeed(value)} aria-pressed={speed === value}
+                  className={`px-2 py-1 rounded-md text-xs border ${speed === value ? 'bg-indigo-950/60 text-indigo-300 border-indigo-700/50' : 'text-gray-400 border-gray-700'}`}>{value}×</button>)}
+              </div>
+            </div>
             <div className="flex items-center justify-between mb-1.5">
               <div className="flex items-center gap-2">
                 <span className="text-xs text-gray-600 uppercase tracking-widest">Lead</span>
