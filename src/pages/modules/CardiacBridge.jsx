@@ -245,10 +245,10 @@ const AP_REGIONS = [
     desc: 'Fast upstroke (INa), brief plateau, rapid repolarization.' },
   { key: 'av', label: 'AV Node', data: SA_AP, phases: SA_PHASES, anchorFraction: 0.68, targetMs: Math.round(QRS_ONSET_MS * 0.72),
     desc: 'Slow-response cell like the SA node — ICa-L upstroke, no fast INa — but fires mid-way through the PR segment, imposing the AV delay.' },
-  { key: 'ventricle', label: 'Ventricle', data: MYO_AP, phases: MYO_PHASES, anchorFraction: 0.182, targetMs: QRS_ONSET_MS + VENTRICULAR_ANIM_DELAY_MS,
-    desc: 'Fast upstroke (Phase 0), long plateau (Phase 2, ICa-L), Phases 0–4 labeled below.' },
   { key: 'purkinje', label: 'Purkinje', data: PK_AP, phases: PK_PHASES, anchorFraction: 0.182, targetMs: QRS_ONSET_MS + VENTRICULAR_ANIM_DELAY_MS - 15,
     desc: 'Fastest upstroke and longest plateau of any cardiac cell — fires just ahead of ventricular myocardium.' },
+  { key: 'ventricle', label: 'Ventricle', data: MYO_AP, phases: MYO_PHASES, anchorFraction: 0.182, targetMs: QRS_ONSET_MS + VENTRICULAR_ANIM_DELAY_MS,
+    desc: 'Fast upstroke (Phase 0), long plateau (Phase 2, ICa-L), Phases 0–4 labeled below.' },
 ]
 
 // Piecewise-linear lookup into an AP data array at a cyclic fraction (data
