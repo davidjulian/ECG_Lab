@@ -1554,10 +1554,9 @@ function HeartDropTarget({ clockRef, rhythm, selectedRegion, onSelect }) {
   // "the boundary" is the real illustrated shape, not an approximation.
   const shapeElsRef = useRef({ atrium: [], ventricle: [], purkinje: [] })
 
-  // Sized larger than the original 200×236 now that this component has a
-  // full-width row to itself (see ECGVsAPSection) instead of sharing space
-  // with the AP panel — same 200:236 aspect ratio, just scaled up 1.6×.
-  const W = 320, H = 378
+  // Keep both traces visible below the heart on a typical laptop display.
+  // Hit regions and the electrode tip still use the rendered stage coordinates.
+  const W = 200, H = 236
   const highlighted = hoverRegion || selectedRegion
 
   useEffect(() => {
@@ -1748,14 +1747,14 @@ function HeartDropTarget({ clockRef, rhythm, selectedRegion, onSelect }) {
   }, [dragging, onSelect, regionAt])
 
   return (
-    <div className="relative rounded-xl border border-gray-800 bg-gray-900/60 p-3 flex flex-col items-center w-full max-w-xl">
-      <div ref={stageRef} className="relative" style={{ width: '100%', maxWidth: 520, minHeight: H + 125 }}>
+    <div className="relative rounded-xl border border-gray-800 bg-gray-900/60 p-2 flex flex-col items-center w-full max-w-md">
+      <div ref={stageRef} className="relative" style={{ width: '100%', maxWidth: 420, minHeight: H + 70 }}>
         <div className="mx-auto" style={{ width: W }}>
           <HeartAnimation tissueWaves clockRef={clockRef} rhythmId="normalSinus" rhythm={rhythm} width={W} height={H} />
         </div>
         {[
-          { side: 'left', top: 110, label: 'Right arm', polarity: '−' },
-          { side: 'right', top: 345, label: 'Left leg', polarity: '+' },
+          { side: 'left', top: 70, label: 'Right arm', polarity: '−' },
+          { side: 'right', top: 195, label: 'Left leg', polarity: '+' },
         ].map(({ side, top, label, polarity }) => (
           <div key={side} className="absolute flex flex-col items-center text-blue-300 text-[11px] leading-snug pointer-events-none"
             style={{ [side]: 0, top }} aria-label={`Fixed Lead II skin electrode: ${label}, ${polarity === '+' ? 'positive' : 'negative'}`}>
@@ -1914,8 +1913,8 @@ function ECGVsAPSection({ rhythm }) {
       </div>
 
       {/* TOP — the heart itself: drag the electrode here */}
-      <div className="rounded-xl border border-gray-800 bg-gray-900/60 p-4 flex flex-col items-center">
-        <p className="text-xs text-gray-500 mb-3 text-center max-w-md">
+      <div className="rounded-xl border border-gray-800 bg-gray-900/60 p-3 flex flex-col md:flex-row items-center justify-center gap-3">
+        <p className="text-xs text-gray-400 leading-relaxed md:w-44 md:shrink-0 max-w-md">
           Drag the yellow intracellular microelectrode to choose a cell recording site. Its extracellular reference electrode is not shown. The blue skin electrodes stay fixed and record Lead II: left leg (+) minus right arm (−). Compare both traces before and after moving the yellow tip.
         </p>
         <HeartDropTarget
@@ -1931,7 +1930,6 @@ function ECGVsAPSection({ rhythm }) {
         {/* LEFT — Intracellular (AP) trace */}
         <div className="flex-1 min-w-0 rounded-xl border border-gray-800 bg-gray-900/60 p-4">
           <h3 className="text-sm font-semibold text-white mb-1">Intracellular Recording</h3>
-          <p className="text-xs text-gray-500 mb-3">Membrane potential = voltage inside the cell − voltage at the extracellular reference electrode (not shown).</p>
           <div className="flex items-baseline justify-between mb-1">
             <span className="text-xs font-semibold text-emerald-300">
               {region ? `${region.label} action potential` : 'No electrode placed'}
@@ -1946,6 +1944,7 @@ function ECGVsAPSection({ rhythm }) {
             color="#34d399"
             phaseMarkers={apMarkers}
           />
+          <p className="text-xs text-gray-400 mt-2">Membrane potential = voltage inside the cell − voltage at the extracellular reference electrode (not shown).</p>
           {region && <Explanation title="Recording explanation" resetKey={selectedRegion} className="mt-2">{region.desc}</Explanation>}
         </div>
 
@@ -1960,7 +1959,6 @@ function ECGVsAPSection({ rhythm }) {
         {/* RIGHT — ECG trace */}
         <div className="flex-1 min-w-0 rounded-xl border border-gray-800 bg-gray-900/60 p-4">
           <h3 className="text-sm font-semibold text-white mb-1">ECG Recording (Fixed Lead II)</h3>
-          <p className="text-xs text-gray-500 mb-3">Voltage at the blue left leg (+) electrode minus voltage at the blue right arm (−) electrode. Both are on the skin, separate from the intracellular recording electrodes.</p>
           <div className="flex items-baseline justify-between mb-1">
             <span className="text-xs font-semibold text-blue-300">Lead II — fixed surface electrodes</span>
             <span className="text-[10px] text-gray-500">Body Surface Voltage Difference (mV)</span>
@@ -1972,6 +1970,7 @@ function ECGVsAPSection({ rhythm }) {
             yDomain={ECG_Y_DOMAIN}
             color="#60a5fa"
           />
+          <p className="text-xs text-gray-400 mt-2">Voltage at the blue left leg (+) electrode minus voltage at the blue right arm (−) electrode. Both are on the skin, separate from the intracellular recording electrodes.</p>
           <p className="text-[11px] text-gray-500 mt-1.5 leading-relaxed">
             Left: voltage across one cell membrane (intracellular electrode required). Right: voltage difference between body surface electrodes. An equivalent cardiac dipole helps explain this measurement.
           </p>
