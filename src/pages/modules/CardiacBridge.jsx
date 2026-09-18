@@ -2225,17 +2225,23 @@ function CardiacVectorOverlay({ clockRef, waves, cycleMs, width = 280, height = 
 // dataRef's effect fires), so swapping the time source in is a clean drop-in.
 function VectorCycle({ rhythm }) {
   const cycleMs = rhythm.cycleMs || CYCLE_MS
-  const waves = rhythm.waves
-  const { tMs: currentTimeMs, isPlaying, toggle, scrub } = useLocalClock(cycleMs, rhythm.nativeCycleMs ?? null)
+  const [speed, setSpeed] = useState(0.1)
+  const [trail, setTrail] = useState(true)
+  const [rotation, setRotation] = useState(0)
+  const baseAxis = useMemo(() => meanQRSAxis(rhythm.waves).angleDeg, [rhythm.waves])
+  const waves = useMemo(() => rhythm.waves.map(w => ['Q', 'R', 'S'].includes(w.name)
+    ? { ...w, axisDeg: (w.axisDeg ?? 0) + rotation } : w), [rhythm.waves, rotation])
+  const axis = useMemo(() => meanQRSAxis(waves), [waves])
+  const { tMs: currentTimeMs, isPlaying, toggle, setPlaying, scrub } = useLocalClock(cycleMs, rhythm.nativeCycleMs ?? null, speed)
   const containerRef = useRef()
   const p5InstRef = useRef(null)
-  const dataRef = useRef({ waves, cycleMs, currentTimeMs })
+  const dataRef = useRef({ waves, cycleMs, currentTimeMs, trail })
 
   // Update data then immediately trigger one draw — avoids rAF timing race
   useEffect(() => {
-    dataRef.current = { waves, cycleMs, currentTimeMs }
+    dataRef.current = { waves, cycleMs, currentTimeMs, trail }
     p5InstRef.current?.redraw()
-  }, [waves, cycleMs, currentTimeMs])
+  }, [waves, cycleMs, currentTimeMs, trail])
 
   useEffect(() => {
     // RENDER_SCALE shrinks the actual rendered canvas without touching any
@@ -2254,11 +2260,12 @@ function VectorCycle({ rhythm }) {
     const sketch = (p) => {
       let ECGCache = null
       let waveRegions = null
+      let cachedWaves = null
 
       const buildCache = (w, cm) => {
         if (!w || !cm) return []
         const N = 400
-        return Array.from({ length: N }, (_, i) => ECGVoltage((i / N) * cm, cm, w, 60))
+        return Array.from({ length: N }, (_, i) => cycleVoltage((i / N) * cm, w, 60))
       }
 
       const buildRegions = (w, cm) => {
@@ -2305,13 +2312,13 @@ function VectorCycle({ rhythm }) {
         p.background(17, 24, 39)
         p.push()
         p.scale(RENDER_SCALE)
-        const { waves: w, cycleMs: cm, currentTimeMs: tMs } = dataRef.current
+        const { waves: w, cycleMs: cm, currentTimeMs: tMs, trail: showTrail } = dataRef.current
 
-        if (!ECGCache || ECGCache.length === 0) ECGCache = buildCache(w, cm)
+        if (cachedWaves !== w) { ECGCache = buildCache(w, cm); waveRegions = buildRegions(w, cm); cachedWaves = w }
         if (!waveRegions) waveRegions = buildRegions(w, cm)
 
-        const Vx = (w && cm) ? ECGVoltage(tMs, cm, w, 0) : 0
-        const Vy = (w && cm) ? ECGVoltage(tMs, cm, w, 90) : 0
+        const Vx = (w && cm) ? cycleVoltage(tMs, w, 0) : 0
+        const Vy = (w && cm) ? cycleVoltage(tMs, w, 90) : 0
         const mag = Math.sqrt(Vx * Vx + Vy * Vy)
         const angle = Math.atan2(Vy, Vx)
 
@@ -2331,8 +2338,8 @@ function VectorCycle({ rhythm }) {
           { label: 'I',    angle: 0 },
           { label: 'II',   angle: Math.PI / 3 },
           { label: 'III',  angle: 2 * Math.PI / 3 },
-          { label: 'aVR',  angle: -2 * Math.PI / 3 },
-          { label: 'aVL',  angle: -Math.PI / 3 },
+          { label: 'aVR',  angle: -5 * Math.PI / 6 },
+          { label: 'aVL',  angle: -Math.PI / 6 },
           { label: 'aVF',  angle: Math.PI / 2 },
         ]
         leads.forEach(({ label, angle: la }) => {
@@ -2344,11 +2351,11 @@ function VectorCycle({ rhythm }) {
           p.line(sx, sy, ex, ey)
           p.drawingContext.setLineDash([])
           p.noStroke()
-          p.fill(75, 85, 99)
+          p.fill(203, 213, 225)
           p.textSize(7)
           p.textAlign(p.CENTER)
           const lx = VCX + Math.cos(la) * (VR + 12), ly = VCY + Math.sin(la) * (VR + 12)
-          p.text(label, lx, ly + 2)
+          p.text(`${label} ${la > 0 ? '+' : ''}${Math.round(la * 180 / Math.PI)}°`, lx, ly + 2)
         })
 
         // Wheel circle
@@ -2365,6 +2372,17 @@ function VectorCycle({ rhythm }) {
         p.line(VCX + projLen, VCY - 6, VCX + projLen, VCY + 6)
         p.line(VCX, VCY, VCX + projLen, VCY)
         p.drawingContext.setLineDash([])
+
+        // Reconstruct the elapsed portion of this cycle, including after scrubbing.
+        if (showTrail && w) {
+          p.noFill(); p.stroke(165, 180, 252); p.strokeWeight(1.3)
+          p.beginShape()
+          for (let t = 0; t <= tMs; t += 2) {
+            p.vertex(VCX + cycleVoltage(t, w, 0) * VR, VCY + cycleVoltage(t, w, 90) * VR)
+          }
+          p.vertex(VCX + Vx * VR, VCY + Vy * VR)
+          p.endShape()
+        }
 
         // Cardiac vector arrow
         if (mag > 0.005) {
@@ -2405,7 +2423,7 @@ function VectorCycle({ rhythm }) {
           p.fill(250, 204, 21)
           p.textSize(7)
           p.textAlign(p.CENTER)
-          p.text(`Mean QRS Axis ${meanAngle >= 0 ? '+' : ''}${meanAngle.toFixed(0)}°`, VCX, VCY + VR + 16)
+          p.text(`Mean QRS Axis ${meanAngle >= 0 ? '+' : ''}${meanAngle.toFixed(0)}°`, VCX, VCY + VR + 34)
         }
 
         p.fill(200, 200, 200)
@@ -2450,7 +2468,7 @@ function VectorCycle({ rhythm }) {
 
         // ECG curve
         if (ECGCache && ECGCache.length > 0) {
-          const maxV = Math.max(...ECGCache.map(Math.abs)) || 1
+          const maxV = 1.5 // fixed scale so rotation changes displayed amplitude
           p.stroke(52, 211, 153)
           p.strokeWeight(1.8)
           p.noFill()
@@ -2480,11 +2498,11 @@ function VectorCycle({ rhythm }) {
         p.fill(103, 232, 249)
         p.textSize(7)
         p.textAlign(p.CENTER)
-        p.text('T wave: repol travels epi→endo', EX + EW / 2, EY + EH + 18)
-        p.text('→ same polarity as QRS in Lead I/II', EX + EW / 2, EY + EH + 28)
+        p.text('Fixed scale: −1.5 to +1.5 mV', EX + EW / 2, EY + EH + 18)
+        p.text('QRS rotation leaves P and T unchanged', EX + EW / 2, EY + EH + 28)
 
         // Time readout
-        p.fill(75, 85, 99)
+        p.fill(203, 213, 225)
         p.textSize(7)
         p.textAlign(p.LEFT)
         p.text(`t = ${Math.round(tMs)} ms`, EX, H - 8)
@@ -2511,12 +2529,7 @@ function VectorCycle({ rhythm }) {
 
   return (
     <div>
-      <CanvasWrap containerRef={containerRef}>
-        <SimBar>
-          <span>Left: cardiac vector rotating through P-QRS-T · Right: Lead II strip with current position marker</span>
-        </SimBar>
-      </CanvasWrap>
-      <div className="flex items-center gap-3 flex-wrap mt-3">
+      <div className="flex items-center gap-3 flex-wrap mb-3">
         <button
           onClick={toggle}
           className="px-4 py-1.5 rounded-lg text-xs font-medium border border-gray-700 bg-gray-800 hover:bg-gray-700 text-white transition-colors"
@@ -2529,16 +2542,37 @@ function VectorCycle({ rhythm }) {
         >
           Reset
         </button>
+        {[0.025, 0.05, 0.1].map(value => <button key={value} onClick={() => setSpeed(value)} aria-pressed={speed === value}
+          className={`px-2 py-1 rounded border text-xs ${speed === value ? 'bg-teal-900 text-white border-teal-500' : 'text-gray-300 border-gray-600'}`}>{value}×</button>)}
+        <span className="text-xs text-gray-300">Cycle time</span>
         <input
           type="range"
           min={0}
           max={cycleMs}
           value={Math.round(currentTimeMs)}
-          onChange={e => scrub(Number(e.target.value))}
+          aria-label="Cycle time"
+          onChange={e => { setPlaying(false); scrub(Number(e.target.value)) }}
           className="flex-1 min-w-[120px] accent-cyan-500"
         />
         <span className="text-xs font-mono text-gray-500 tabular-nums w-20">{Math.round(currentTimeMs)} / {cycleMs} ms</span>
+      </div>      <CanvasWrap containerRef={containerRef}>
+        <SimBar>
+          <span>Left: cardiac vector rotating through P-QRS-T · Right: Lead II strip with current position marker</span>
+        </SimBar>
+      </CanvasWrap>
+      <div className="mt-3 space-y-3">
+        <label className="text-xs text-gray-300 flex items-center gap-2"><input type="checkbox" checked={trail} onChange={e => setTrail(e.target.checked)} />Vector trail</label>
+        <label className="flex items-center gap-3 text-sm text-gray-300">Mean QRS axis
+          <input aria-label="Mean QRS axis" type="range" min={-180} max={180} step={5}
+            value={Math.round((((baseAxis + rotation) + 180) % 360 + 360) % 360 - 180)}
+            onChange={e => setRotation(Number(e.target.value) - baseAxis)} className="flex-1 accent-teal-400" />
+          <span className="font-mono">{axis.angleDeg > 0 ? '+' : ''}{Math.round(axis.angleDeg)}°</span>
+          <button onClick={() => setRotation(0)} className="text-xs border border-gray-600 rounded px-2 py-1">Reset axis</button>
+        </label>
+        <p className="text-xs text-gray-400">Speeds are relative to real time. The axis control rotates ventricular depolarization while keeping its timing and source magnitude fixed.</p>
+        <AxisSummaryPanel angleDeg={axis.angleDeg} leadIMm={axis.leadIMm} leadAVFMm={axis.leadAVFMm} />
       </div>
+
     </div>
   )
 }
@@ -2677,14 +2711,11 @@ export function RecordingsPage() {
 
 export function VectorCyclePage() {
   const rhythm = useMemo(() => buildRhythmFromParams(DEFAULT_RHYTHM_PARAMS), [])
-  const axis = useMemo(() => meanQRSAxis(rhythm.waves), [rhythm])
   return (
     <ModulePage title="Vector Cycle"
       description="Advanced exploration for a later activity. Follow the changing cardiac vector and its projections throughout P, QRS, and T.">
       <VectorCycle rhythm={rhythm} />
-      <div className="rounded-xl border border-gray-800 bg-gray-900/60 p-4 mt-3">
-        <AxisSummaryPanel angleDeg={axis.angleDeg} leadIMm={axis.leadIMm} leadAVFMm={axis.leadAVFMm} />
-      </div>
+
     </ModulePage>
   )
 }

@@ -5,6 +5,6 @@ export const MODULES = [
   { id: 'leads', label: 'Lead Views', number: 3, group: 'Foundations' },
   { id: 'ECG', label: 'ECG Simulator', number: 4, group: 'Experiments' },
   { id: 'scenarios', label: 'Patient Cases', group: 'Applications' },
-  { id: 'mean-axis', label: 'Mean Axis', advanced: true, group: 'Advanced' },
   { id: 'vector-cycle', label: 'Vector Cycle', advanced: true, group: 'Advanced' },
+  { id: 'mean-axis', label: 'Mean Axis', advanced: true, group: 'Advanced' },
 ]

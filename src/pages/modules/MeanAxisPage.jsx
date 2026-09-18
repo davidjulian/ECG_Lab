@@ -21,7 +21,6 @@ export default function MeanAxisPage() {
   const [speed, setSpeed] = useState(0.1)
   const [rotation, setRotation] = useState(0)
   const [reveal, setReveal] = useState(false)
-  const [angles, setAngles] = useState(false)
   const [trail, setTrail] = useState(true)
   useEffect(() => {
     if (!playing) return undefined
@@ -62,7 +61,7 @@ export default function MeanAxisPage() {
               return <g key={lead.name}>
                 <line x1={200 - 135 * Math.cos(a)} y1={190 - 135 * Math.sin(a)} x2={200 + 135 * Math.cos(a)} y2={190 + 135 * Math.sin(a)} stroke="#8193a6" strokeDasharray="4 5" />
                 <circle cx={200 + 135 * Math.cos(a)} cy={190 + 135 * Math.sin(a)} r="3" fill="#e2e8f0" />
-                <text x={200 + 161 * Math.cos(a)} y={194 + 161 * Math.sin(a)} fill="#e2e8f0" textAnchor="middle" fontSize="12">{lead.name}{angles ? ` ${angleText(lead.angle)}` : ''}</text>
+                <text x={200 + 161 * Math.cos(a)} y={194 + 161 * Math.sin(a)} fill="#e2e8f0" textAnchor="middle" fontSize="12">{lead.name}{` ${angleText(lead.angle)}`}</text>
               </g>
             })}
             {trail && <polyline points={trailPoints} fill="none" stroke="#a5b4fc" strokeWidth="2" />}
@@ -76,9 +75,8 @@ export default function MeanAxisPage() {
           </svg>
           <div className="flex flex-wrap gap-4 text-xs text-gray-300">
             <label><input type="checkbox" checked={trail} onChange={e => setTrail(e.target.checked)} /> Vector trail</label>
-            <label><input type="checkbox" checked={angles} onChange={e => setAngles(e.target.checked)} /> Lead angles</label>
           </div>
-          <p className="mt-3 text-xs text-sky-300">Blue: instantaneous vector{angles && Math.hypot(instant.x, instant.y) > 0.01 ? ` · ${angleText(Math.atan2(instant.y, instant.x) * 180 / Math.PI)}` : ''}</p>
+          <p className="mt-3 text-xs text-sky-300">Blue: instantaneous vector{Math.hypot(instant.x, instant.y) > 0.01 ? ` · ${angleText(Math.atan2(instant.y, instant.x) * 180 / Math.PI)}` : ''}</p>
           {reveal && <p className="mt-2 text-xs text-yellow-300">Yellow: full QRS mean · {angleText(mean.angle)}<br />Dashed amber: contributions accumulated so far.</p>}
         </div>
         <div>
@@ -86,7 +84,7 @@ export default function MeanAxisPage() {
           <p className="text-xs text-gray-400 mt-1">All panels: −1.5 to +1.5 mV · 0–100 ms</p>
           <div className="grid grid-cols-2 gap-3 mt-3">
             {FRONTAL_LEADS.map(lead => <div key={lead.name} className="rounded-lg border border-gray-700 p-2">
-              <p className="text-xs text-gray-200">Lead {lead.name}{angles ? ` (${angleText(lead.angle)})` : ''}</p>
+              <p className="text-xs text-gray-200">Lead {lead.name}{` (${angleText(lead.angle)})`}</p>
               <svg viewBox="0 0 260 130" className="w-full" role="img" aria-label={`Lead ${lead.name} QRS waveform with synchronized time cursor`}>
                 {[20, 35, 50, 65, 80, 95, 110].map(y => <line key={y} x1="28" x2="248" y1={y} y2={y} stroke={GRID_MINOR} />)}
                 {[28, 72, 116, 160, 204, 248].map(x => <line key={x} x1={x} x2={x} y1="20" y2="110" stroke={GRID_MINOR} />)}
