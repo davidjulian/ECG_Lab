@@ -18,7 +18,7 @@ function Arrow({ vector, color, dashed = false }) {
 export default function MeanAxisPage() {
   const [time, setTime] = useState(0)
   const [playing, setPlaying] = useState(false)
-  const [speed, setSpeed] = useState(1)
+  const [speed, setSpeed] = useState(0.01)
   const [rotation, setRotation] = useState(0)
   const [reveal, setReveal] = useState(false)
   const [angles, setAngles] = useState(false)
@@ -27,7 +27,7 @@ export default function MeanAxisPage() {
     if (!playing) return undefined
     let frame, last
     const tick = now => {
-      if (last !== undefined) setTime(t => (t + (now - last) * speed / 20) % (QRS_MS + 20))
+      if (last !== undefined) setTime(t => (t + (now - last) * speed) % (QRS_MS + 20))
       last = now
       frame = requestAnimationFrame(tick)
     }
@@ -45,8 +45,8 @@ export default function MeanAxisPage() {
     <div className="rounded-xl border border-gray-700 bg-gray-950 p-4 space-y-4">
       <div className="flex flex-wrap items-center gap-2">
         <button className={button} onClick={() => setPlaying(!playing)}>{playing ? 'Pause' : 'Play'}</button>
-        {[0.25, 0.5, 1].map(s => <button key={s} className={button} aria-pressed={speed === s} style={speed === s ? { background: '#115e59' } : undefined} onClick={() => setSpeed(s)}>{s}×</button>)}
-        <span className="text-xs text-gray-400 ml-2">Slow motion: 1× shows 100 ms in 2 seconds.</span>
+        {[0.0025, 0.005, 0.01].map(s => <button key={s} className={button} aria-pressed={speed === s} style={speed === s ? { background: '#115e59' } : undefined} onClick={() => setSpeed(s)}>{s}×</button>)}
+        <span className="text-xs text-gray-400 ml-2">Playback relative to real time · 0.01× shows 100 ms in 10 seconds.</span>
       </div>
       <label className="flex items-center gap-3 text-sm text-gray-300">QRS time
         <input className="flex-1 accent-teal-400" type="range" min="0" max={QRS_MS} step="0.5" value={shownTime} onChange={e => { setPlaying(false); setTime(Number(e.target.value)) }} />
