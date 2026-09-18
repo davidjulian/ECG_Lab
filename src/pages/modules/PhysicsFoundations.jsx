@@ -10,8 +10,8 @@ import { modelMillivolts, formatMillivolts, gridDotProduct, DOT_UNIT_TO_MV } fro
 const TABS = [
   { id: '2A', label: '2A · Charges' },
   { id: '2B', label: '2B · Dipole' },
-  { id: '2C', label: '2C · Depolarization' },
-  { id: '2D', label: '2D · Dot Product' },
+  { id: '2C', label: '2C · Dot Product' },
+  { id: '2D', label: '2D · Depolarization' },
 ]
 
 // ── Layout helpers ────────────────────────────────────────────────────────────
@@ -569,7 +569,7 @@ function Sim2B() {
   )
 }
 
-// ── 2C: Extracellular sources from a row of cells ───────────
+// ── 2D: Extracellular sources from a row of cells ───────────
 function PlayIcon()  { return <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg> }
 function PauseIcon() { return <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M7 5h4v14H7zm6 0h4v14h-4z"/></svg> }
 const CELL_SPEEDS = [0.25, 0.5, 1]
@@ -915,7 +915,7 @@ function SimCells() {
   )
 }
 
-// ── 2D: Draggable vectors, dot product, projection ───────────────────────────
+// ── 2C: Draggable vectors, dot product, projection ───────────────────────────
 function SimDotProduct() {
   const containerRef = useRef()
 
@@ -1017,7 +1017,7 @@ function SimDotProduct() {
         p.textAlign(p.CENTER, p.CENTER); p.textSize(14)
         p.text('B', OX + vecB.x + 17 * Math.cos(bAng + 0.5), OY + vecB.y + 17 * Math.sin(bAng + 0.5))
 
-        // Vector A (blue — the "cardiac vector")
+        // Vector A (blue — the abstract dipole vector)
         arrow(OX, OY, OX + vecA.x, OY + vecA.y, 59, 130, 246, 220, 3)
         const aAng = Math.atan2(vecA.y, vecA.x)
         p.fill(59, 130, 246, 190); p.noStroke()
@@ -1118,10 +1118,7 @@ export default function PhysicsFoundations() {
           <Callout>
             Electric field arrows point toward decreasing potential. Equipotential contours join
             locations of equal potential and cross field lines at right angles.
-            <br /><br />When cardiac muscle depolarizes, positive
-            ions rush into cells and a charge separation forms across the wavefront — positive charges
-            ahead, negative charges behind. This is the same physics as two opposite charges on the canvas.
-            The net effect at electrode distance approximates a single equivalent dipole.
+
           </Callout>
 
           <ForwardLink onNext={() => setActive('2B')}>continues in 2B — the dipole model</ForwardLink>
@@ -1130,7 +1127,7 @@ export default function PhysicsFoundations() {
 
       {/* ── 2B ──────────────────────────────────────────────────────────────── */}
       {active === '2B' && (
-        <Section label="2B" title="A dipole: the simplest model of the heart's field">
+        <Section label="2B" title="A dipole: two opposite charges">
           <p className="text-xs text-gray-400 leading-snug mb-2">
             A dipole is a linked +/− pair with fixed separation. Drag its center region to rotate it.
             Drag the green probe to select a sampling location and read its potential in mV.
@@ -1146,16 +1143,63 @@ export default function PhysicsFoundations() {
             </Equation>
             This approximation applies at distances large compared with the charge separation.
             At equal distances from the two opposite charges, their potential contributions cancel.
-            An equivalent dipole is a simplified representation of the heart's distributed sources.
           </Callout>
 
-          <ForwardLink onNext={() => setActive('2C')}>continue to 2C — Depolarization</ForwardLink>
+          <ForwardLink onNext={() => setActive('2C')}>continue to 2C — Dot Product</ForwardLink>
         </Section>
       )}
 
       {/* ── 2C ──────────────────────────────────────────────────────────────── */}
       {active === '2C' && (
-        <Section label="2C" title="Compare cell states and extracellular recordings">
+        <Section label="2C" title="Compare two vectors">
+          <p className="text-xs text-gray-400 leading-snug mb-2">
+            Vector <strong className="text-blue-400">A</strong> represents an abstract dipole at one instant.
+            Vector <strong className="text-amber-400">B</strong> is the lead axis (the direction from −
+            electrode to + electrode, with a modeled sensitivity given by its length).
+            Vector lengths use model units, with one unit per grid square.
+            The dashed line shows the projection of A onto B; the thick blue segment on the B axis
+            shows its signed length.
+          </p>
+
+          <p className="text-xs text-gray-400 mb-2">
+            Equivalent lead voltage = dot product × 0.1 mV per model unit². This fixed conversion
+            illustrates how the projection affects a lead recording.
+          </p>
+          <SimDotProduct />
+
+          <Explanation className="my-2">
+          <Equation label="θ = angle between dipole vector and lead axis">
+            {'A · B = |A| |B| cos θ'}
+          </Equation>
+          <div className="grid grid-cols-3 gap-3 text-sm mb-3">
+            {[
+              { θ: '0°',   result: 'cos θ = 1',  desc: 'Lead parallel to dipole vector → maximum positive deflection', color: '#3b82f6' },
+              { θ: '90°',  result: 'cos θ = 0',  desc: 'Lead perpendicular → zero contribution at this instant',                  color: '#6b7280' },
+              { θ: '180°', result: 'cos θ = −1', desc: 'Lead anti-parallel → maximum negative (inverted waveform)',     color: '#f59e0b' },
+            ].map(({ θ, result, desc, color }) => (
+              <div key={θ} className="rounded-xl bg-gray-900 border border-gray-800 p-3">
+                <p className="font-mono text-lg font-bold mb-1" style={{ color }}>θ = {θ}</p>
+                <p className="font-mono text-xs text-gray-400 mb-2">{result}</p>
+                <p className="text-xs text-gray-500 leading-snug">{desc}</p>
+              </div>
+            ))}
+          </div>
+
+          <p>
+            In this model, a lead has a fixed vector (B).
+            As the dipole vector (A) changes through time, its dot product with B changes.
+            Applying the fixed voltage scale and plotting the result through time produces a
+            modeled lead waveform. At any instant, a vector perpendicular to B contributes zero
+            to that lead, even when the dipole vector is substantial.
+          </p>
+          </Explanation>
+
+          <ForwardLink onNext={() => setActive('2D')}>continue to 2D — Depolarization</ForwardLink>
+        </Section>
+      )}
+      {/* ── 2D ──────────────────────────────────────────────────────────────── */}
+      {active === '2D' && (
+        <Section label="2D" title="Compare cell states and extracellular recordings">
           <p className="text-xs text-gray-400 leading-snug mb-2">
             Drag either electrode to rotate the lead. Use Play or Scrub to follow the wave.
             Electrode positions are schematic; recordings are calculated farther from the cells.
@@ -1186,57 +1230,10 @@ export default function PhysicsFoundations() {
             This is a simplified cable source model with illustrative timing, not a full cardiac ECG.
           </Callout>
 
-          <ForwardLink onNext={() => setActive('2D')}>continue to 2D — Dot Product</ForwardLink>
-        </Section>
-      )}
-      {/* ── 2D ──────────────────────────────────────────────────────────────── */}
-      {active === '2D' && (
-        <Section label="2D" title="Compare two vectors">
-          <p className="text-xs text-gray-400 leading-snug mb-2">
-            Vector <strong className="text-blue-400">A</strong> represents a dipole at one instant.
-            Vector <strong className="text-amber-400">B</strong> is the lead axis (the direction from −
-            electrode to + electrode, with a modeled sensitivity given by its length).
-            Vector lengths use model units, with one unit per grid square.
-            The dashed line shows the projection of A onto B; the thick blue segment on the B axis
-            shows its signed length.
-          </p>
-
-          <p className="text-xs text-gray-400 mb-2">
-            Equivalent lead voltage = dot product × 0.1 mV per model unit². This fixed conversion
-            illustrates how the projection affects a lead recording.
-          </p>
-          <SimDotProduct />
-
-          <Explanation className="my-2">
-          <Equation label="θ = angle between dipole vector and lead axis">
-            {'A · B = |A| |B| cos θ'}
-          </Equation>
-          <div className="grid grid-cols-3 gap-3 text-sm mb-3">
-            {[
-              { θ: '0°',   result: 'cos θ = 1',  desc: 'Lead parallel to cardiac vector → maximum positive deflection', color: '#3b82f6' },
-              { θ: '90°',  result: 'cos θ = 0',  desc: 'Lead perpendicular → zero contribution at this instant',                  color: '#6b7280' },
-              { θ: '180°', result: 'cos θ = −1', desc: 'Lead anti-parallel → maximum negative (inverted waveform)',     color: '#f59e0b' },
-            ].map(({ θ, result, desc, color }) => (
-              <div key={θ} className="rounded-xl bg-gray-900 border border-gray-800 p-3">
-                <p className="font-mono text-lg font-bold mb-1" style={{ color }}>θ = {θ}</p>
-                <p className="font-mono text-xs text-gray-400 mb-2">{result}</p>
-                <p className="text-xs text-gray-500 leading-snug">{desc}</p>
-              </div>
-            ))}
-          </div>
-
-          <p>
-            In this model, a lead has a fixed vector (B).
-            As the dipole vector (A) changes through time, its dot product with B changes.
-            Applying the fixed voltage scale and plotting the result through time produces a
-            modeled lead waveform. At any instant, a vector perpendicular to B contributes zero
-            to that lead, even when the cardiac vector is substantial.
-          </p>
-          </Explanation>
-
           <ForwardLink onNext={() => navigate('/play/leads')}>continue to Module 3 — place electrodes and compare leads</ForwardLink>
         </Section>
       )}
+
 
 
     </ModulePage>
