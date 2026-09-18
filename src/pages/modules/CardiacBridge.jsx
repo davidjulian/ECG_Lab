@@ -318,7 +318,7 @@ function CanvasWrap({ containerRef, children }) {
 }
 function SimBar({ children }) {
   return (
-    <div className="flex items-center gap-3 px-4 py-2.5 bg-gray-900/80 border-t border-gray-800 text-xs text-gray-500 flex-wrap">
+    <div className="flex items-center gap-3 px-4 py-2.5 bg-gray-900/80 border-t border-gray-800 text-xs text-gray-400 flex-wrap">
       {children}
     </div>
   )
@@ -345,7 +345,7 @@ function Callout({ children }) {
 function InfoRow({ label, value }) {
   return (
     <div className="flex gap-2 text-xs leading-relaxed mb-1.5">
-      <span className="text-gray-500 shrink-0 w-28">{label}</span>
+      <span className="text-gray-400 shrink-0 w-28">{label}</span>
       <span className="text-gray-200">{value}</span>
     </div>
   )
@@ -504,8 +504,8 @@ function AnatomyDiagram({ selected, onSelect }) {
           </div>
         ) : (
           <div className="rounded-xl border border-gray-800 bg-gray-900/40 p-4 h-full flex flex-col justify-center text-center">
-            <p className="text-gray-500 text-sm">Hover or click a structure</p>
-            <p className="text-gray-600 text-xs mt-2">SA Node · RA · LA · AV Node · Bundle of His · Bundle Branches · Purkinje · RV · LV · Septum</p>
+            <p className="text-gray-400 text-sm">Hover or click a structure</p>
+            <p className="text-gray-400 text-xs mt-2">SA Node · RA · LA · AV Node · Bundle of His · Bundle Branches · Purkinje · RV · LV · Septum</p>
           </div>
         )}
       </div>
@@ -839,7 +839,7 @@ function IonChannelGlossary() {
         className="w-full flex items-center justify-between text-xs font-semibold text-gray-300 hover:text-gray-100 transition-colors"
       >
         Ion channel key
-        <svg className={`w-4 h-4 shrink-0 text-gray-500 transition-transform ${open ? 'rotate-180' : ''}`}
+        <svg className={`w-4 h-4 shrink-0 text-gray-400 transition-transform ${open ? 'rotate-180' : ''}`}
           fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
         </svg>
@@ -947,11 +947,11 @@ function APLivePanel({ clockRef, cycleMs, title, sub, data, phases, channels, co
     <div className="rounded-xl border border-gray-800 bg-gray-900/60 overflow-hidden flex-1 min-w-0">
       <div className="px-3 pt-1.5 pb-0.5">
         <div className="text-xs font-semibold text-gray-100 leading-snug">{title}</div>
-        <div className="text-[10px] text-gray-500 leading-snug">{sub}</div>
+        <div className="text-[10px] text-gray-400 leading-snug">{sub}</div>
       </div>
       <div className="flex items-baseline justify-between px-3 pb-0.5">
         <span className="text-[10px] font-semibold" style={{ color }}>Membrane Potential (mV)</span>
-        <span className="text-[9px] text-gray-600">−100 to +50 mV — NOT what an ECG records</span>
+        <span className="text-[9px] text-gray-400">−100 to +50 mV — NOT what an ECG records</span>
       </div>
       <TraceCanvas
         clockRef={clockRef}
@@ -1070,13 +1070,13 @@ function LiveActionPotentials() {
         <div className="flex rounded-lg border border-gray-700 overflow-hidden text-xs shrink-0">
           <button
             onClick={() => setViewMode('focus')}
-            className={`px-3 py-1.5 font-medium transition-colors ${viewMode === 'focus' ? 'bg-emerald-600/20 text-emerald-300' : 'bg-gray-800 text-gray-500 hover:text-gray-300'}`}
+            className={`px-3 py-1.5 font-medium transition-colors ${viewMode === 'focus' ? 'bg-emerald-600/20 text-emerald-300' : 'bg-gray-800 text-gray-400 hover:text-gray-300'}`}
           >
             Focus
           </button>
           <button
             onClick={() => setViewMode('compare')}
-            className={`px-3 py-1.5 font-medium border-l border-gray-700 transition-colors ${viewMode === 'compare' ? 'bg-emerald-600/20 text-emerald-300' : 'bg-gray-800 text-gray-500 hover:text-gray-300'}`}
+            className={`px-3 py-1.5 font-medium border-l border-gray-700 transition-colors ${viewMode === 'compare' ? 'bg-emerald-600/20 text-emerald-300' : 'bg-gray-800 text-gray-400 hover:text-gray-300'}`}
           >
             Compare
           </button>
@@ -1091,7 +1091,7 @@ function LiveActionPotentials() {
               className="flex items-center gap-2 w-56 px-3 py-1.5 rounded-lg bg-gray-800 border border-gray-700 text-xs font-semibold text-white hover:bg-gray-700 hover:border-gray-600 transition-colors"
             >
               <span className="flex-1 text-left truncate">{focusedMeta.label}</span>
-              <svg className={`w-4 h-4 shrink-0 text-gray-500 transition-transform ${focusMenuOpen ? 'rotate-180' : ''}`}
+              <svg className={`w-4 h-4 shrink-0 text-gray-400 transition-transform ${focusMenuOpen ? 'rotate-180' : ''}`}
                 fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
               </svg>
@@ -1130,7 +1130,7 @@ function LiveActionPotentials() {
                 <label
                   key={t.id}
                   className={`flex items-center gap-1.5 text-xs px-2 py-1 rounded-lg border transition-colors ${
-                    checked ? 'border-gray-600 bg-gray-800 text-gray-200' : 'border-gray-800 text-gray-500'
+                    checked ? 'border-gray-600 bg-gray-800 text-gray-200' : 'border-gray-800 text-gray-400'
                   } ${disabled && !checked ? 'opacity-40' : 'cursor-pointer'}`}
                 >
                   <input
@@ -1142,7 +1142,7 @@ function LiveActionPotentials() {
                 </label>
               )
             })}
-            <span className="text-[10px] text-gray-600">Pick {COMPARE_MIN}–{COMPARE_MAX}</span>
+            <span className="text-[10px] text-gray-400">Pick {COMPARE_MIN}–{COMPARE_MAX}</span>
           </div>
         )}
       </div>
@@ -1150,7 +1150,7 @@ function LiveActionPotentials() {
       {/* Panels, in conduction order: SA fires first, then the atrium
           (almost immediately), then — after the AV delay — the AV node
           itself, then ventricle and Purkinje fire together. */}
-      <p className="text-[11px] text-gray-500 mb-1">
+      <p className="text-[11px] text-gray-400 mb-1">
         The cursor loops once per cardiac cycle. Watch the order: SA node fires first, the atrium follows almost
         immediately, then the AV node fires (imposing the delay) just before ventricle and Purkinje fire together.
       </p>
@@ -1199,7 +1199,7 @@ function LiveActionPotentials() {
           onChange={e => scrub(Number(e.target.value))}
           className="flex-1 min-w-[120px] accent-emerald-500"
         />
-        <span className="text-xs font-mono text-gray-500 tabular-nums w-28">{Math.round(tMs)} / {Math.round(phys.cycleMs)} ms</span>
+        <span className="text-xs font-mono text-gray-400 tabular-nums w-28">{Math.round(tMs)} / {Math.round(phys.cycleMs)} ms</span>
         <div className="flex items-center gap-1">
           {SPEEDS.map(s => (
             <button
@@ -1208,7 +1208,7 @@ function LiveActionPotentials() {
               className={`px-2.5 py-1.5 rounded-lg text-xs font-mono border transition-colors ${
                 speed === s
                   ? 'bg-emerald-950/60 text-emerald-300 border-emerald-700/50'
-                  : 'bg-gray-800 text-gray-500 border-gray-700 hover:text-gray-300'
+                  : 'bg-gray-800 text-gray-400 border-gray-700 hover:text-gray-300'
               }`}
             >
               {s}×
@@ -1246,7 +1246,7 @@ function LiveActionPotentials() {
         <div className="flex flex-wrap items-center gap-3 mt-2 px-3 py-1.5 rounded-lg bg-gray-950/50 border border-gray-800">
           <span className="text-xs text-gray-400">AV node conduction delay</span>
           <span className="text-sm font-mono text-amber-300">Δt ≈ {phys.avDelayMs} ms</span>
-          <span className="text-[11px] text-gray-600">Bridges to the PR interval in Module 2, Lab 2 — no ECG shown here.</span>
+          <span className="text-[11px] text-gray-400">Bridges to the PR interval in Module 2, Lab 2 — no ECG shown here.</span>
         </div>
         {phys.bothElevated && (
           <div className="mt-1.5 px-3 py-1 rounded-lg bg-purple-950/40 border border-purple-700/40 text-xs text-purple-300">
@@ -1269,7 +1269,7 @@ function LiveActionPotentials() {
               <div className="h-full transition-all" style={{ width: `${kPct}%`, backgroundColor: kBarColor(phys.effectiveKMEqL) }} />
             </div>
             <div className="flex items-baseline justify-between mt-1">
-              <p className="text-[10px] text-gray-600">Normal range 3.5–5.0 mEq/L</p>
+              <p className="text-[10px] text-gray-400">Normal range 3.5–5.0 mEq/L</p>
               {sympathetic > 0 && (
                 <p className="text-[10px] font-mono text-amber-300">
                   Effective [K⁺]: {phys.effectiveKMEqL.toFixed(1)} mEq/L
@@ -1325,7 +1325,7 @@ function LiveActionPotentials() {
       </div>
 
       {/* No ECG in this section — intracellular recordings only */}
-      <p className="mt-2 text-[11px] text-gray-600 text-center leading-relaxed">
+      <p className="mt-2 text-[11px] text-gray-400 text-center leading-relaxed">
         The traces above require an intracellular microelectrode. An ECG cannot measure membrane potential — see section 2C.
       </p>
     </div>
@@ -1809,9 +1809,22 @@ function HeartDropTarget({ clockRef, rhythm, selectedRegion, onSelect }) {
           <ElectrodeIcon />
         </div>
       </div>
-      <p className="text-[11px] text-gray-500 mt-2">
-        {selectedRegion ? <>Intracellular recording site: <span className="text-cyan-300">{AP_REGIONS.find(r => r.key === selectedRegion)?.label}</span></> : 'Drag the intracellular microelectrode onto the heart'}
-      </p>
+      <label className="flex items-center justify-center gap-2 text-xs text-gray-300 mt-2">
+        Recording site
+        <select aria-label="Intracellular recording site" value={selectedRegion || ''}
+          className="bg-gray-950 border border-gray-600 rounded px-2 py-1 text-gray-200"
+          onChange={e => {
+            const key = e.target.value
+            const shape = regionShapes?.[key]?.[0]
+            if (shape) setDragPos(shape.kind === 'circle'
+              ? { x: shape.x, y: shape.y }
+              : { x: (shape.left + shape.right) / 2, y: (shape.top + shape.bottom) / 2 })
+            onSelect(key)
+          }}>
+          {!selectedRegion && <option value="" disabled>Choose a site</option>}
+          {AP_REGIONS.map(region => <option key={region.key} value={region.key}>{region.label}</option>)}
+        </select>
+      </label>
       <p className="text-[11px] text-blue-300 mt-2 text-center">Blue pads: Lead II surface electrodes. Positions are schematic.</p>
     </div>
   )
@@ -1880,11 +1893,11 @@ function ECGVsAPSection({ rhythm }) {
           {isPlaying ? 'Pause' : 'Play'}
         </button>
         <div className="flex items-center gap-1.5" role="group" aria-label="Playback speed">
-          <span className="text-xs uppercase tracking-widest text-gray-500">Speed</span>
+          <span className="text-xs uppercase tracking-widest text-gray-400">Speed</span>
           {[0.25, 0.5, 1].map(value => (
             <button key={value} onClick={() => setSpeed(value)} aria-pressed={speed === value}
               className={`px-2 py-1 rounded-md text-xs font-mono border transition-colors ${
-                speed === value ? 'bg-indigo-950/60 text-indigo-300 border-indigo-700/50' : 'text-gray-500 border-gray-700 hover:text-gray-300'
+                speed === value ? 'bg-indigo-950/60 text-indigo-300 border-indigo-700/50' : 'text-gray-400 border-gray-700 hover:text-gray-300'
               }`}>
               {value}×
             </button>
@@ -1899,13 +1912,13 @@ function ECGVsAPSection({ rhythm }) {
           onChange={e => { setPlaying(false); scrub(Number(e.target.value)) }}
           className="flex-1 min-w-[120px] accent-emerald-500"
         />
-        <span className="text-xs font-mono text-gray-500 tabular-nums w-24">{Math.round(tMs)} / {cycleMs} ms</span>
+        <span className="text-xs font-mono text-gray-400 tabular-nums w-24">{Math.round(tMs)} / {cycleMs} ms</span>
         <button
           onClick={handleZoom}
           className={`px-4 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
             zoomed
               ? 'bg-emerald-950/60 text-emerald-300 border-emerald-700/50'
-              : 'bg-gray-800 text-gray-500 border-gray-700 hover:text-gray-300'
+              : 'bg-gray-800 text-gray-400 border-gray-700 hover:text-gray-300'
           }`}
         >
           {zoomed ? 'Exit Zoom' : 'Zoom to QRS'}
@@ -1915,7 +1928,7 @@ function ECGVsAPSection({ rhythm }) {
       {/* TOP — the heart itself: drag the electrode here */}
       <div className="rounded-xl border border-gray-800 bg-gray-900/60 p-3 flex flex-col md:flex-row items-center justify-center gap-3">
         <p className="text-xs text-gray-400 leading-relaxed md:w-44 md:shrink-0 max-w-md">
-          Drag the yellow intracellular microelectrode to choose a cell recording site. Its extracellular reference electrode is not shown. The blue skin electrodes stay fixed and record Lead II: left leg (+) minus right arm (−). Compare both traces before and after moving the yellow tip.
+          Drag the yellow intracellular microelectrode or use the Recording site menu to choose a cell. Its extracellular reference electrode is not shown. The blue skin electrodes stay fixed and record Lead II: left leg (+) minus right arm (−). Compare both traces before and after moving the yellow tip.
         </p>
         <HeartDropTarget
           clockRef={clockRef}
@@ -1934,7 +1947,7 @@ function ECGVsAPSection({ rhythm }) {
             <span className="text-xs font-semibold text-emerald-300">
               {region ? `${region.label} action potential` : 'No electrode placed'}
             </span>
-            <span className="text-[10px] text-gray-500">Membrane Potential (mV)</span>
+            <span className="text-[10px] text-gray-400">Membrane Potential (mV)</span>
           </div>
           <TraceCanvas
             clockRef={clockRef}
@@ -1950,8 +1963,8 @@ function ECGVsAPSection({ rhythm }) {
 
         {/* SEPARATOR */}
         <div className="flex lg:flex-col items-center justify-center gap-2 lg:w-10 shrink-0 py-1">
-          <span className="text-2xl text-gray-600">↔</span>
-          <span className="text-[10px] text-gray-600 text-center leading-tight max-w-[90px]">
+          <span className="text-2xl text-gray-400">↔</span>
+          <span className="text-[10px] text-gray-400 text-center leading-tight max-w-[90px]">
             Compare the recordings
           </span>
         </div>
@@ -1961,7 +1974,7 @@ function ECGVsAPSection({ rhythm }) {
           <h3 className="text-sm font-semibold text-white mb-1">ECG Recording (Fixed Lead II)</h3>
           <div className="flex items-baseline justify-between mb-1">
             <span className="text-xs font-semibold text-blue-300">Lead II — fixed surface electrodes</span>
-            <span className="text-[10px] text-gray-500">Body Surface Voltage Difference (mV)</span>
+            <span className="text-[10px] text-gray-400">Body Surface Voltage Difference (mV)</span>
           </div>
           <TraceCanvas
             clockRef={clockRef}
@@ -1971,7 +1984,7 @@ function ECGVsAPSection({ rhythm }) {
             color="#60a5fa"
           />
           <p className="text-xs text-gray-400 mt-2">Voltage at the blue left leg (+) electrode minus voltage at the blue right arm (−) electrode. Both are on the skin, separate from the intracellular recording electrodes.</p>
-          <p className="text-[11px] text-gray-500 mt-1.5 leading-relaxed">
+          <p className="text-[11px] text-gray-400 mt-1.5 leading-relaxed">
             Left: voltage across one cell membrane (intracellular electrode required). Right: voltage difference between body surface electrodes. An equivalent cardiac dipole helps explain this measurement.
           </p>
         </div>
@@ -2064,7 +2077,7 @@ function ConductionSection({ rhythm }) {
 
           {/* Velocity table */}
           <div className="rounded-xl border border-gray-800 bg-gray-900/60 p-3">
-            <div className="text-xs text-gray-500 mb-2 font-mono uppercase tracking-wider">Conduction Velocity Reference</div>
+            <div className="text-xs text-gray-400 mb-2 font-mono uppercase tracking-wider">Conduction Velocity Reference</div>
             <table className="w-full text-xs">
               <tbody>
                 {velTable.map(row => (
@@ -2104,7 +2117,7 @@ function ConductionSection({ rhythm }) {
           className={`px-4 py-1.5 rounded-lg text-xs font-medium border transition-colors ${
             showVector
               ? 'bg-emerald-950/60 text-emerald-300 border-emerald-700/50'
-              : 'bg-gray-800 text-gray-500 border-gray-700 hover:text-gray-300'
+              : 'bg-gray-800 text-gray-400 border-gray-700 hover:text-gray-300'
           }`}
         >
           Cardiac vector {showVector ? 'ON' : 'OFF'}
@@ -2117,7 +2130,7 @@ function ConductionSection({ rhythm }) {
           onChange={e => scrub(Number(e.target.value))}
           className="flex-1 min-w-[120px] accent-cyan-500"
         />
-        <span className="text-xs font-mono text-gray-500 tabular-nums w-20">{tMs} / {cycleMs} ms</span>
+        <span className="text-xs font-mono text-gray-400 tabular-nums w-20">{tMs} / {cycleMs} ms</span>
       </div>
     </div>
   )

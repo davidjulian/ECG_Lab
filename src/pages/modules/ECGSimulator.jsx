@@ -9,7 +9,7 @@ import {
   buildRhythmFromPhysiology,
   physiologyToRhythmId,
   PHYSIOLOGY_DEFAULTS,
-  warpTime,
+  ECGCycleTime,
 } from '../../lib/ECGEngine'
 
 // ── Canvas config ─────────────────────────────────────────────────────────────
@@ -71,7 +71,7 @@ const PARAM_SECTIONS = [
   {
     id: 'ans',
     label: 'Autonomic Nervous System',
-    description: 'The autonomic nervous system modulates several of the parameters above at once, rather than one at a time: SA rate, AV conduction velocity, ventricular action potential duration, and (sympathetic tone only) Purkinje/ventricular ectopic focus automaticity.',
+    description: 'The autonomic nervous system modulates several of the parameters above at once, rather than one at a time: SA rate, AV conduction velocity, ventricular action potential duration, and (sympathetic tone only) AV junctional/ventricular ectopic focus automaticity.',
     keys: ['sympatheticTone', 'parasympatheticTone'],
   },
   {
@@ -133,7 +133,7 @@ function physiologicalInterpretation(derived) {
   // this isn't an AV block at all.
   if (derived.escapeSource === 'purkinje' && derived.avRatio === 1) {
     return withIonNote({
-      mechanismText: 'The Purkinje/junctional escape focus is now firing faster than the (slowed) SA node. AV conduction is intact, but this faster pacemaker has taken over control of the ventricles.',
+      mechanismText: 'The AV junctional escape pacemaker is now firing faster than the (slowed) SA node. AV conduction is intact, but this faster pacemaker has taken over control of the ventricles.',
       clinicalName: 'Accelerated Junctional Rhythm', level: 'warn',
     })
   }
@@ -149,7 +149,7 @@ function physiologicalInterpretation(derived) {
     const noImpulseText = complete ? 'No atrial impulse reaches the ventricles' : 'Only rare atrial impulses reach the ventricles'
     if (derived.escapeSource === 'purkinje') {
       return withIonNote({
-        mechanismText: `${complete ? 'Complete' : 'High-grade'} AV block. ${noImpulseText} — the Purkinje system is acting as an escape pacemaker.`,
+        mechanismText: `${complete ? 'Complete' : 'High-grade'} AV block. ${noImpulseText} — the AV junction is acting as an escape pacemaker.`,
         clinicalName: `${degree} AV Block (Junctional Escape)`, level: 'danger',
       })
     }
@@ -274,7 +274,7 @@ function SegBtn({ options, value, disabled, onChange }) {
           className={`flex-1 px-1.5 py-1.5 text-xs transition-colors leading-tight ${
             value === o.value
               ? 'bg-emerald-600/35 text-emerald-300 font-medium'
-              : 'text-gray-500 hover:text-gray-300 hover:bg-gray-800'
+              : 'text-gray-400 hover:text-gray-300 hover:bg-gray-800'
           }`}>
           {o.label}
         </button>
@@ -322,9 +322,7 @@ export default function ECGSimulator() {
   const canvasRef     = useRef(null)
   const heartClockRef = useRef({ elapsedMs: 0, cycleMs: 800, tInCycle: 0, nativeCycleMs: null })
   const activeRef      = useRef({ leadId: 'II', rhythm: buildRhythmFromPhysiology(DEFAULT) })
-  // Tracks a "virtual cycle start" so tInCycle stays continuous when a
-  // parameter change alters cycleMs — see the phase-anchor comment below.
-  const cycleAnchorRef = useRef({ anchorMs: 0, cycleMs: null })
+
 
   // Keep rAF ref and animation rhythm in sync with latest state
   useEffect(() => {
@@ -344,26 +342,8 @@ export default function ECGSimulator() {
       lastTs = ts
       const { rhythm, leadId: lid } = activeRef.current
       const { cycleMs, nativeCycleMs } = rhythm
-      // Same warpTime() jitter the trace applies (via ECGVoltage) before its
-      // own modulo, so the heart animation's notion of "where in the cycle
-      // we are" stays phase-locked with what's actually drawn, not just
-      // approximately in sync on average.
-      const warpedMs = warpTime(elapsedMs)
-
-      // A parameter change can alter cycleMs mid-session. elapsedMs/warpedMs
-      // grow monotonically and are never reset, so naively modulo-ing them
-      // against a new cycleMs would jump tInCycle instantly. Instead, shift
-      // a "virtual cycle start" anchor whenever cycleMs changes so the
-      // already-elapsed phase carries over continuously into the new cycle
-      // length rather than jumping.
-      const anchor = cycleAnchorRef.current
-      if (anchor.cycleMs !== cycleMs) {
-        const prevTInCycle = anchor.cycleMs != null
-          ? ((warpedMs - anchor.anchorMs) % anchor.cycleMs + anchor.cycleMs) % anchor.cycleMs
-          : 0
-        cycleAnchorRef.current = { anchorMs: warpedMs - prevTInCycle, cycleMs }
-      }
-      const tInCycle = ((warpedMs - cycleAnchorRef.current.anchorMs) % cycleMs + cycleMs) % cycleMs
+      // Both displays use the current rhythm and exactly the same phase.
+      const tInCycle = ECGCycleTime(elapsedMs, cycleMs)
 
       heartClockRef.current = {
         elapsedMs,
@@ -457,14 +437,14 @@ export default function ECGSimulator() {
             </div>
             <div className="flex items-center justify-between mb-1.5">
               <div className="flex items-center gap-2">
-                <span className="text-xs text-gray-600 uppercase tracking-widest">Lead</span>
+                <span className="text-xs text-gray-400 uppercase tracking-widest">Lead</span>
                 <div className="flex gap-1">
                   {LEAD_ORDER.map(id => (
                     <button key={id} onClick={() => setLeadId(id)}
                       className={`px-2.5 py-1 rounded text-xs font-medium transition-colors ${
                         leadId === id
                           ? 'bg-emerald-600/30 text-emerald-300 border border-emerald-700/50'
-                          : 'text-gray-500 hover:text-gray-300'
+                          : 'text-gray-400 hover:text-gray-300'
                       }`}>
                       {id}
                     </button>
@@ -473,7 +453,7 @@ export default function ECGSimulator() {
               </div>
               <div className="flex items-center gap-4 text-xs">
                 {derived.ventricularRateBpm > 0 ? (
-                  <span className="text-gray-500">
+                  <span className="text-gray-400">
                     Ventricular rate{' '}
                     <span className="text-white font-bold tabular-nums">{derived.ventricularRateBpm}</span> bpm
                   </span>
@@ -495,7 +475,8 @@ export default function ECGSimulator() {
               <div className="flex-1 min-w-0">
                 <canvas ref={canvasRef} width={CW} height={CH} className="w-full rounded-lg"
                   style={{ backgroundColor: '#030712' }} />
-                <p className="text-xs text-gray-700 mt-1 text-right">40 ms / small square · 0.5 mV / square</p>
+                <p className="text-xs text-gray-400 mt-1 text-right">Trace reflects current settings.</p>
+                <p className="text-xs text-gray-400 mt-1 text-right">Vertical grid lines: 40 ms apart · Horizontal grid lines: 0.5 mV apart</p>
               </div>
             </div>
           </div>
@@ -529,12 +510,12 @@ export default function ECGSimulator() {
 
           {/* Current EKG measurements — a READOUT, not a control */}
           <div className="flex-1 min-w-0 rounded-xl bg-gray-900/70 border border-gray-800 p-3">
-            <p className="text-xs uppercase tracking-widest text-gray-600 mb-1.5">Current EKG Measurements</p>
+            <p className="text-xs uppercase tracking-widest text-gray-400 mb-1.5">Current ECG Measurements</p>
             <div className="flex flex-wrap gap-x-5 gap-y-1.5 text-sm font-mono">
-              <span className="text-gray-500">PR <span className="font-bold tabular-nums" style={{ color: prColor }}>{derived.prIntervalMs ? `${Math.round(derived.prIntervalMs)}ms` : '—'}</span></span>
-              <span className="text-gray-500">QRS <span className="font-bold tabular-nums" style={{ color: qrsColor }}>{derived.qrsDurationMs ? `${Math.round(derived.qrsDurationMs)}ms` : '—'}</span></span>
-              <span className="text-gray-500">QT <span className="font-bold tabular-nums text-gray-300">{derived.qtIntervalMs ? `${Math.round(derived.qtIntervalMs)}ms` : '—'}</span></span>
-              <span className="text-gray-500">QTc <span className="font-bold tabular-nums" style={{ color: qtcColor }}>{qtcMs ? `${qtcMs}ms` : '—'}</span></span>
+              <span className="text-gray-400">PR <span className="font-bold tabular-nums" style={{ color: prColor }}>{derived.prIntervalMs ? `${Math.round(derived.prIntervalMs)}ms` : '—'}</span></span>
+              <span className="text-gray-400">QRS <span className="font-bold tabular-nums" style={{ color: qrsColor }}>{derived.qrsDurationMs ? `${Math.round(derived.qrsDurationMs)}ms` : '—'}</span></span>
+              <span className="text-gray-400">QT <span className="font-bold tabular-nums text-gray-300">{derived.qtIntervalMs ? `${Math.round(derived.qtIntervalMs)}ms` : '—'}</span></span>
+              <span className="text-gray-400">QTc <span className="font-bold tabular-nums" style={{ color: qtcColor }}>{qtcMs ? `${qtcMs}ms` : '—'}</span></span>
             </div>
           </div>
 
@@ -558,7 +539,7 @@ export default function ECGSimulator() {
                 className="flex items-center gap-2 w-60 px-3 py-2 rounded-lg bg-gray-800 border border-gray-700 text-sm font-semibold text-white hover:bg-gray-700 hover:border-gray-600 transition-colors"
               >
                 <span className="flex-1 text-left truncate">{activeSection.label}</span>
-                <svg className={`w-4 h-4 shrink-0 text-gray-500 transition-transform ${menuOpen ? 'rotate-180' : ''}`}
+                <svg className={`w-4 h-4 shrink-0 text-gray-400 transition-transform ${menuOpen ? 'rotate-180' : ''}`}
                   fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
                 </svg>
@@ -606,7 +587,7 @@ export default function ECGSimulator() {
               className={`shrink-0 px-3 py-2 rounded-lg text-xs border transition-colors ${
                 anyChanged
                   ? 'text-gray-300 border-gray-700 bg-gray-800 hover:bg-gray-700'
-                  : 'text-gray-700 border-gray-800 cursor-not-allowed'
+                  : 'text-gray-400 border-gray-800 cursor-not-allowed'
               }`}
             >
               Reset all
@@ -634,7 +615,7 @@ export default function ECGSimulator() {
                     { label: 'Respiratory', value: 'respiratory' },
                     { label: 'Irregular',   value: 'irregular'   },
                   ]} />
-                  <Explanation resetKey={explanationKey} className="mt-2"><p className="text-xs text-gray-600 mt-0.5 leading-snug">
+                  <Explanation resetKey={explanationKey} className="mt-2"><p className="text-xs text-gray-400 mt-0.5 leading-snug">
                     {firingRegularity === 'regular'     && 'Constant P-P interval.'}
                     {firingRegularity === 'respiratory' && 'Normal variant. Vagal tone increases on expiration, slowing the SA node. Common in young, healthy individuals and athletes — not a pathological finding.'}
                     {firingRegularity === 'irregular'   && 'SA node dysfunction — sick sinus syndrome. Rate becomes unpredictable.'}
@@ -693,7 +674,7 @@ export default function ECGSimulator() {
                     { label: 'Uniform', value: 'uniform' },
                     { label: 'Fatigue', value: 'fatigue' },
                   ]} />
-                  <Explanation resetKey={explanationKey} className="mt-2"><p className="text-xs text-gray-600 mt-0.5 leading-snug">
+                  <Explanation resetKey={explanationKey} className="mt-2"><p className="text-xs text-gray-400 mt-0.5 leading-snug">
                     {avRecoveryBehavior === 'fatigue'
                       ? "With each impulse, the AV node takes slightly longer to recover. This produces progressively longer PR intervals until a beat is finally blocked — then the node resets. This is the mechanism of Wenckebach."
                       : "The AV node either conducts or it doesn't — recovery time is constant. When a beat is blocked, there is no warning. This is the mechanism of Mobitz II."}
@@ -786,7 +767,7 @@ export default function ECGSimulator() {
                     { label: 'Moderate', value: 'moderate' },
                     { label: 'High',     value: 'high'     },
                   ]} />
-                  <Explanation resetKey={explanationKey} className="mt-2"><p className="text-xs text-gray-600 mt-0.5 leading-snug">
+                  <Explanation resetKey={explanationKey} className="mt-2"><p className="text-xs text-gray-400 mt-0.5 leading-snug">
                     {repolHeterogeneity === 'none'     && 'Uniform T wave, low arrhythmia risk.'}
                     {repolHeterogeneity === 'moderate'  && 'T wave changes, inverted or biphasic.'}
                     {repolHeterogeneity === 'high'      && 'Heterogeneous repolarization creates a re-entry substrate — some regions are excitable while adjacent regions are still refractory. Re-entrant beats begin appearing.'}
@@ -817,8 +798,8 @@ export default function ECGSimulator() {
                     onChange={v => set('sympatheticTone', v)}
                     hint="Noradrenaline/adrenaline acts on β1 receptors. Increases If (steeper phase 4 slope in SA node), enhances ICa-L (faster AV conduction), shortens action potential duration (shorter QT)."
                   />
-                  <Explanation resetKey={explanationKey} className="mt-2"><p className="text-xs text-gray-600 mt-1">↑ SA automaticity | ↓ AV conduction delay | ↓ AP duration</p></Explanation>
-                  <Explanation resetKey={explanationKey} className="mt-2"><p className="text-xs text-gray-700 mt-0.5">Exercise, fear, pain, epinephrine, dopamine, dobutamine</p></Explanation>
+                  <Explanation resetKey={explanationKey} className="mt-2"><p className="text-xs text-gray-400 mt-1">↑ SA automaticity | ↓ AV conduction delay | ↓ AP duration</p></Explanation>
+                  <Explanation resetKey={explanationKey} className="mt-2"><p className="text-xs text-gray-400 mt-0.5">Exercise, fear, pain, epinephrine, dopamine, dobutamine</p></Explanation>
                 </div>
                 <div>
                   <ParamSlider
@@ -827,8 +808,8 @@ export default function ECGSimulator() {
                     onChange={v => set('parasympatheticTone', v)}
                     hint="Acetylcholine acts on M2 receptors. Opens IKAch channels — hyperpolarizes SA node (slower automaticity) and slows AV node conduction (longer PR)."
                   />
-                  <Explanation resetKey={explanationKey} className="mt-2"><p className="text-xs text-gray-600 mt-1">↓ SA automaticity | ↑ AV conduction delay | variable AP duration</p></Explanation>
-                  <Explanation resetKey={explanationKey} className="mt-2"><p className="text-xs text-gray-700 mt-0.5">Sleep, vasovagal syncope, digoxin, athletic training, carotid sinus massage</p></Explanation>
+                  <Explanation resetKey={explanationKey} className="mt-2"><p className="text-xs text-gray-400 mt-1">↓ SA automaticity | ↑ AV conduction delay | variable AP duration</p></Explanation>
+                  <Explanation resetKey={explanationKey} className="mt-2"><p className="text-xs text-gray-400 mt-0.5">Sleep, vasovagal syncope, digoxin, athletic training, carotid sinus massage</p></Explanation>
                 </div>
               </>
             )}
@@ -857,7 +838,7 @@ export default function ECGSimulator() {
                     onChange={v => set('calciumMgDl', v)}
                     hint="Ca2+ affects the threshold for action potential firing and the plateau phase duration via ICa-L. It does NOT change resting membrane potential significantly."
                   />
-                  <Explanation resetKey={explanationKey} className="mt-2"><p className="text-xs text-gray-600 mt-1.5 leading-snug">
+                  <Explanation resetKey={explanationKey} className="mt-2"><p className="text-xs text-gray-400 mt-1.5 leading-snug">
                     {calciumMgDl > 13
                       ? 'Severe hypercalcemia — abnormal notch at the J point (Osborn wave), also seen in hypothermia.'
                       : calciumMgDl > 10.5
@@ -872,6 +853,9 @@ export default function ECGSimulator() {
 
           </div>
         </div>
+        <Explanation title="Model explanation" className="mt-3">
+          This model illustrates physiological relationships; its parameter thresholds and waveform shapes are approximations. Changing a control redraws the entire trace for the current settings, rather than recording the transition between conditions.
+        </Explanation>
       </div>
     </ModulePage>
   )

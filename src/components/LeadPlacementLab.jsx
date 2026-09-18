@@ -568,7 +568,7 @@ export default function LeadPlacementLab() {
         </button>
 
         <div className="flex items-center gap-1.5">
-          <span className="text-xs uppercase tracking-widest text-gray-600 mr-0.5">Speed</span>
+          <span className="text-xs uppercase tracking-widest text-gray-400 mr-0.5">Speed</span>
           {SPEEDS.map((s) => (
             <button
               key={s}
@@ -576,7 +576,7 @@ export default function LeadPlacementLab() {
               className={`px-2 py-1 rounded-md text-xs font-mono border transition-colors ${
                 speed === s
                   ? 'bg-indigo-950/60 text-indigo-300 border-indigo-700/50'
-                  : 'text-gray-500 border-gray-700 hover:text-gray-300'
+                  : 'text-gray-400 border-gray-700 hover:text-gray-300'
               }`}
             >
               {s}×
@@ -599,14 +599,14 @@ export default function LeadPlacementLab() {
           aria-label="Cycle time"
           className="flex-1 min-w-[120px] accent-cyan-500"
         />
-        <span ref={scrubLabelRef} className="text-xs font-mono text-gray-500 tabular-nums w-28 text-right">
+        <span ref={scrubLabelRef} className="text-xs font-mono text-gray-400 tabular-nums w-28 text-right">
           0 / {Math.round(RHYTHM.cycleMs)} ms
         </span>
       </div>
 
       {/* Rotate the cardiac vector itself, independent of electrode placement */}
       <div className="px-3 py-1.5 border-b border-gray-800 flex items-center gap-3">
-        <span className="text-xs uppercase tracking-widest text-gray-600 shrink-0">Source rotation</span>
+        <span className="text-xs uppercase tracking-widest text-gray-400 shrink-0">Source rotation</span>
         <input
           type="range"
           min={-180}
@@ -616,7 +616,7 @@ export default function LeadPlacementLab() {
           onChange={e => setAxisRotation(Number(e.target.value))}
           className="flex-1 min-w-[120px] accent-amber-500"
         />
-        <span className="text-xs font-mono text-gray-500 tabular-nums w-28 text-right">
+        <span className="text-xs font-mono text-gray-400 tabular-nums w-28 text-right">
           {axisRotation >= 0 ? '+' : ''}{axisRotation}° {axisRotation !== 0 && '(rotated)'}
         </span>
       </div>
@@ -654,7 +654,7 @@ export default function LeadPlacementLab() {
             />
             {/* Floating annotation */}
             <div className="px-3 py-2 pointer-events-none">
-              <p className="text-xs text-gray-600 text-center font-mono">
+              <p className="text-xs text-gray-400 text-center font-mono">
                 {overlay === 'augmented' ? 'Dashed lines combine electrode potentials into a calculated reference' : 'Dashed axis passes through the cardiac origin, parallel to the electrode connection'}
               </p>
             </div>
@@ -663,7 +663,7 @@ export default function LeadPlacementLab() {
           {/* ECG strip */}
           <div className="border-t border-gray-800">
             <div className="flex items-center gap-3 px-3 pt-2.5 pb-1">
-              <p className="text-xs uppercase tracking-widest text-gray-600">Live ECG output</p>
+              <p className="text-xs uppercase tracking-widest text-gray-400">Live ECG output</p>
               <span className="text-xs text-indigo-300">Line = current instant</span>
 
             </div>
@@ -673,7 +673,7 @@ export default function LeadPlacementLab() {
               height={EH}
               style={{ width: '100%', maxWidth: EW, display: 'block', backgroundColor: '#030712' }}
             />
-            <p className="text-xs text-gray-700 text-right px-3 pb-2">40 ms / square · 0.5 mV / square</p>
+            <p className="text-xs text-gray-400 text-right px-3 pb-2">Vertical grid lines: 40 ms apart · Horizontal grid lines: 0.5 mV apart</p>
           </div>
         </div>
 
@@ -681,24 +681,24 @@ export default function LeadPlacementLab() {
         <div className="w-64 shrink-0 bg-gray-900/80 border-l border-gray-800 p-4 flex flex-col gap-4 justify-center">
           <div className="space-y-3">
             <div>
-              <p className="text-xs text-gray-500 mb-0.5">Angle θ</p>
+              <p className="text-xs text-gray-400 mb-0.5">Angle θ</p>
               <p ref={angleRef} className="text-lg font-bold font-mono text-white tabular-nums">—</p>
-              <p className="text-xs text-gray-600">between dipole &amp; lead axis</p>
+              <p className="text-xs text-gray-400">between dipole &amp; lead axis</p>
             </div>
             <div className="rounded-lg bg-gray-900/70 border border-gray-800 px-2.5 py-2">
-              <p className="text-xs text-gray-500 mb-1">Electrode voltages</p>
+              <p className="text-xs text-gray-400 mb-1">Electrode voltages</p>
               <p className="text-xs font-mono tabular-nums"><span className="text-blue-400">V(+)</span> <span ref={vPlusRef} className="text-blue-300">—</span></p>
               <p className="text-xs font-mono tabular-nums"><span className="text-amber-400">{overlay === 'augmented' ? 'V(reference)' : 'V(−)'}</span> <span ref={vMinusRef} className="text-amber-300">—</span></p>
             </div>
             <div>
-              <p className="text-xs text-gray-500 mb-0.5">ΔV = V(+) − V(−)</p>
+              <p className="text-xs text-gray-400 mb-0.5">ΔV = V(+) − V(−)</p>
               <p ref={dotRef} className="text-lg font-bold font-mono text-blue-400 tabular-nums">—</p>
-              <p className="text-xs text-gray-600">this is what the ECG plots</p>
+              <p className="text-xs text-gray-400">this is what the ECG plots</p>
             </div>
             <div>
-              <p className="text-xs text-gray-500 mb-0.5">Efficiency</p>
+              <p className="text-xs text-gray-400 mb-0.5">Relative projection magnitude</p>
               <p ref={projRef} className="text-lg font-bold font-mono text-emerald-400 tabular-nums">—</p>
-              <p className="text-xs text-gray-600">cosθ × 100</p>
+              <p className="text-xs text-gray-400">|cos θ| × 100%</p>
             </div>
           </div>
 

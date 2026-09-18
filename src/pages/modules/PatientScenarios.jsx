@@ -613,7 +613,7 @@ function ECGStrip({ rhythm }) {
           onChange={e => { setPlaying(false); elapsedRef.current = Number(e.target.value) }}
           className="flex-1 min-w-[100px] accent-emerald-500"
         />
-        <span ref={scrubLabelRef} className="text-xs font-mono text-gray-500 tabular-nums w-24 text-right shrink-0">
+        <span ref={scrubLabelRef} className="text-xs font-mono text-gray-400 tabular-nums w-24 text-right shrink-0">
           0 / {cycleMs} ms
         </span>
       </div>      <canvas ref={canvasRef} width={SW} height={SH}
@@ -641,7 +641,7 @@ function HPICard({ hpi }) {
       ].map(([label, val]) => (
         <div key={label} className="px-3 py-1.5 grid gap-4 border-b border-gray-800/80 last:border-0"
           style={{ gridTemplateColumns: '150px 1fr' }}>
-          <span className="text-xs text-gray-500 uppercase tracking-wide leading-5">{label}</span>
+          <span className="text-xs text-gray-400 uppercase tracking-wide leading-5">{label}</span>
           <span className="text-sm text-gray-300 leading-relaxed">{val}</span>
         </div>
       ))}
@@ -704,7 +704,7 @@ function QuestionBlock({ question, value, onChange, submitted }) {
             placeholder="Enter number"
             className="w-28 px-3 py-2 rounded-lg bg-gray-800 border border-gray-700 text-white text-sm disabled:opacity-60 focus:outline-none focus:border-emerald-600"
           />
-          <span className="text-sm text-gray-500">{question.unit}</span>
+          <span className="text-sm text-gray-400">{question.unit}</span>
           {submitted && (
             <span className={`text-sm font-medium ${correct ? 'text-emerald-400' : 'text-red-400'}`}>
               {correct ? '✓ Correct' : `✗ Answer: ${question.correct} ${question.unit}`}
@@ -729,7 +729,7 @@ function QuestionBlock({ question, value, onChange, submitted }) {
           return (
             <button key={i} onClick={() => !submitted && onChange(i)}
               className={`w-full text-left px-3 py-1.5 rounded-lg border text-sm transition-colors ${cls} ${!submitted ? 'hover:border-gray-500 hover:text-gray-200 cursor-pointer' : 'cursor-default'}`}>
-              <span className="text-gray-500 mr-2 text-xs font-medium">{String.fromCharCode(65 + i)}.</span>
+              <span className="text-gray-400 mr-2 text-xs font-medium">{String.fromCharCode(65 + i)}.</span>
               {opt}
             </button>
           )
@@ -799,9 +799,9 @@ function ScenarioCard({ caseData }) {
       <HPICard hpi={caseData.hpi} />
 
       <div>
-        <p className="text-xs text-gray-500 uppercase tracking-widest mb-1 font-medium">Lead II — ECG Strip</p>
+        <p className="text-xs text-gray-400 uppercase tracking-widest mb-1 font-medium">Lead II — ECG Strip</p>
         <ECGStrip rhythm={rhythm} />
-        <p className="text-xs text-gray-600 mt-1">25 mm/s · 1 cm/mV standard calibration</p>
+        <p className="text-xs text-gray-400 mt-1">25 mm/s · 1 cm/mV standard calibration</p>
       </div>
 
       <Explanation optional={false} title={caseData.hints.length ? "Case questions and hints" : "Case questions"} resetKey={caseData.id}>
@@ -810,12 +810,12 @@ function ScenarioCard({ caseData }) {
       )}
 
       <div className="space-y-2">
-        <p className="text-xs text-gray-500 uppercase tracking-widest font-medium">
+        <p className="text-xs text-gray-400 uppercase tracking-widest font-medium">
           Questions {submitted ? `· ${score}/${caseData.questions.length} correct` : ''}
         </p>
         {caseData.questions.map((q, i) => (
           <div key={q.id}>
-            <p className="text-xs text-gray-600 mb-1 font-medium">Question {i + 1}</p>
+            <p className="text-xs text-gray-400 mb-1 font-medium">Question {i + 1}</p>
             <QuestionBlock
               question={q}
               value={answers[q.id]}

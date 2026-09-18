@@ -802,12 +802,16 @@ export function cycleVoltage(tInCycleMs, waves, leadAxisDeg = LEADS.I.axisDeg) {
   }, 0)
 }
 
+// Shared by the trace and heart animation, including after cycle-length changes.
+export function ECGCycleTime(elapsedMs, cycleMs) {
+  return ((warpTime(elapsedMs) % cycleMs) + cycleMs) % cycleMs
+}
+
 export function ECGVoltage(elapsedMs, cycleMs, waves, leadAxisDeg = LEADS.I.axisDeg, nativeCycleMs = null) {
   // VFib detection: no identifiable waves, just chaos
   if (!waves || waves.length === 0) return vfibVoltage(elapsedMs)
 
-  const warpedMs   = warpTime(elapsedMs)
-  const tInCycle   = ((warpedMs % cycleMs) + cycleMs) % cycleMs
+  const tInCycle   = ECGCycleTime(elapsedMs, cycleMs)
   const tEvaluated = nativeCycleMs !== null ? tInCycle * (nativeCycleMs / cycleMs) : tInCycle
   return cycleVoltage(tEvaluated, waves, leadAxisDeg) + ECGNoise(elapsedMs)
 }
