@@ -786,22 +786,11 @@ function SimCells() {
 
         p.pop()
 
-        // Info panel
-        p.fill(15, 20, 30, 210); p.noStroke()
-        p.rect(9, 9, 190, 42, 7)
-        p.textAlign(p.LEFT, p.TOP); p.textSize(11)
-        p.fill(255, 255, 255, 210); p.text(`t = ${Math.round(t)} ms`, 18, 18)
-        p.fill(150, 150, 150, 150); p.text(phaseName(t), 18, 34)
-
-        // Probe readout panel — V(A), V(B) and their difference
-        p.fill(15, 20, 30, 210); p.noStroke()
-        p.rect(9, H - 68, 190, 59, 7)
-        p.textAlign(p.LEFT, p.TOP); p.textSize(11)
-        p.fill(52, 211, 153, 220); p.text(`V(A) = ${formatMillivolts(modelMillivolts(vA))}`, 18, H - 60)
-        p.fill(168, 85, 247, 220); p.text(`V(B) = ${formatMillivolts(modelMillivolts(vB))}`, 18, H - 44)
-        p.fill(255, 255, 255, 210); p.text(`ΔV = ${formatMillivolts(modelMillivolts(dv))}`, 18, H - 28)
-        p.fill(255, 255, 255, 60); p.textSize(9)
-        p.text('drag either electrode to rotate', 18, H - 14)
+        // Keep only complementary readouts, without boxes over the rotation path.
+        p.noStroke(); p.textAlign(p.LEFT, p.TOP); p.textSize(11)
+        p.fill(203, 213, 225); p.text(phaseName(t), 18, 18)
+        p.fill(255, 255, 255, 210)
+        p.text(`ΔV = ${formatMillivolts(modelMillivolts(dv))}`, 18, H - 28)
 
         // cell row voltage graph — the ΔV(t) actually seen by the current
         // electrode pair, so it visibly changes shape as A/B are dragged
