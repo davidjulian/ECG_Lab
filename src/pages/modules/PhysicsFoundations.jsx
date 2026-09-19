@@ -1,6 +1,6 @@
 ﻿import { useEffect, useRef, useState } from 'react'
 import p5 from 'p5'
-import { CELL_COUNT, CELL_WIDTH, CELL_XS, ROW_Y, CELL_CANVAS_WIDTH, CELL_CANVAS_HEIGHT, CELL_CENTER_X, CELL_LEAD_RADIUS, cellLeadProbes, cellRecordingProbes, REST_BEFORE, STEP_DELAY, TRANS_DUR, APD, LAST_DEPOL_END, LAST_REPOL_END, CELL_CYCLE_MS, CELL_PARALLEL_PEAK, CELL_SMOOTHING_MS, cellState, cellSourcesAt, cellPotential } from '../../lib/cellRowModel'
+import { CELL_COUNT, CELL_WIDTH, CELL_XS, ROW_Y, CELL_CANVAS_WIDTH, CELL_CENTER_X, CELL_LEAD_RADIUS, cellLeadProbes, cellRecordingProbes, REST_BEFORE, STEP_DELAY, TRANS_DUR, APD, LAST_DEPOL_END, LAST_REPOL_END, CELL_CYCLE_MS, CELL_PARALLEL_PEAK, CELL_SMOOTHING_MS, cellState, cellSourcesAt, cellPotential } from '../../lib/cellRowModel'
 import ModulePage from '../../components/ModulePage'
 import Explanation from '../../components/Explanation'
 import { useNavigate } from 'react-router-dom'
@@ -606,9 +606,9 @@ function SimCells() {
   const scrubLabelRef = useRef(null)
 
   useEffect(() => {
-    // Scaled ~0.78x from the original 720×480 (same uniform-factor rule as
-    // Sim2A — see its comment).
-    const W = CELL_CANVAS_WIDTH, H = CELL_CANVAS_HEIGHT
+    // Keep the model coordinates unchanged while giving the chart more room.
+    const W = CELL_CANVAS_WIDTH, H = 440
+    const sceneScale = 0.88, sceneOffsetX = -55
     const N = CELL_COUNT, CELL_W = CELL_WIDTH, CELL_H = 47
     const CX = CELL_CENTER_X
     const TOTAL_CYCLE = CELL_CYCLE_MS
@@ -699,6 +699,10 @@ function SimCells() {
 
         p.background(15, 20, 30)
 
+        p.push()
+        p.translate(sceneOffsetX, 0)
+        p.scale(sceneScale)
+
         const { a: probeA, b: probeB } = probes()
         p.noFill(); p.stroke(148, 163, 184); p.strokeWeight(1)
         p.circle(CX, ROW_Y, CELL_LEAD_RADIUS * 2)
@@ -780,6 +784,8 @@ function SimCells() {
           p.text('Mirrored probe positions', CX, arrowY + 10)
         }
 
+        p.pop()
+
         // Info panel
         p.fill(15, 20, 30, 210); p.noStroke()
         p.rect(9, 9, 190, 42, 7)
@@ -800,9 +806,9 @@ function SimCells() {
         // cell row voltage graph — the ΔV(t) actually seen by the current
         // electrode pair, so it visibly changes shape as A/B are dragged
         // (unlike the underlying dipole, which is fixed).
-        const chW = 185, chH = 100, chX = W - chW - 9, chY = 9
-        const plotX = chX + 48, plotW = chW - 54
-        const plotTop = chY + 16, plotBottom = chY + chH - 25
+        const chW = 250, chH = 155, chX = W - chW - 9, chY = 9
+        const plotX = chX + 62, plotW = chW - 74
+        const plotTop = chY + 29, plotBottom = chY + chH - 42
         const plotMid = (plotTop + plotBottom) / 2, plotHalf = (plotBottom - plotTop) / 2
         p.fill(15, 20, 30, 210); p.noStroke()
         p.rect(chX, chY, chW, chH, 7)
@@ -825,19 +831,28 @@ function SimCells() {
         p.line(cursorX, plotTop, cursorX, plotBottom)
         p.fill(245, 158, 11, 200); p.noStroke()
         p.textAlign(p.LEFT, p.BOTTOM); p.textSize(9)
-        p.text('Cell row voltage ΔV', chX + 5, chY + chH - 4)
+        p.text('Cell row voltage ΔV', chX + 8, chY + 17)
+        p.fill(203, 213, 225); p.textAlign(p.CENTER, p.TOP)
+        for (const time of [0, 1000, 2000]) {
+          const x = plotX + time / TOTAL_CYCLE * plotW
+          p.stroke(129, 147, 166); p.line(x, plotBottom, x, plotBottom + 4)
+          p.noStroke(); p.text(String(time), x, plotBottom + 7)
+        }
+        p.text('Time (ms)', plotX + plotW / 2, chY + chH - 15)
       }
 
       p.mousePressed = () => {
         if (p.mouseX < 0 || p.mouseX > W || p.mouseY < 0 || p.mouseY > H) return
         const { a, b } = probes()
-        if (Math.hypot(p.mouseX - a.x, p.mouseY - a.y) < PR + 8) dragEndpoint = 'a'
-        else if (Math.hypot(p.mouseX - b.x, p.mouseY - b.y) < PR + 8) dragEndpoint = 'b'
+        const mouseX = (p.mouseX - sceneOffsetX) / sceneScale, mouseY = p.mouseY / sceneScale
+        if (Math.hypot(mouseX - a.x, mouseY - a.y) < PR + 8) dragEndpoint = 'a'
+        else if (Math.hypot(mouseX - b.x, mouseY - b.y) < PR + 8) dragEndpoint = 'b'
       }
       p.mouseDragged = () => {
-        if (!dragEndpoint || Math.hypot(p.mouseX - CX, p.mouseY - ROW_Y) < 10) return
+        const mouseX = (p.mouseX - sceneOffsetX) / sceneScale, mouseY = p.mouseY / sceneScale
+        if (!dragEndpoint || Math.hypot(mouseX - CX, mouseY - ROW_Y) < 10) return
         const direction = dragEndpoint === 'a' ? -1 : 1
-        let degrees = Math.atan2(direction * (p.mouseY - ROW_Y), direction * (p.mouseX - CX)) * 180 / Math.PI
+        let degrees = Math.atan2(direction * (mouseY - ROW_Y), direction * (mouseX - CX)) * 180 / Math.PI
         const nearestQuarter = Math.round(degrees / 90) * 90
         if (Math.abs(degrees - nearestQuarter) < 4) degrees = nearestQuarter
         rotateLead(degrees)
