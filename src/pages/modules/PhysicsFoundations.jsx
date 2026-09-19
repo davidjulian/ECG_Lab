@@ -907,7 +907,7 @@ function SimCells() {
         <span><span className="text-blue-400">+ outside: resting (polarized)</span> · <span className="text-amber-400">− outside: depolarized</span></span>
       </SimBar>
       <SimBar>
-        <label htmlFor="cell-lead-angle" className="shrink-0">Lead rotation</label>
+        <label htmlFor="cell-lead-angle" className="shrink-0">Lead angle</label>
         <input id="cell-lead-angle" type="range" min={0} max={360} step={1}
           value={leadAngle} onChange={e => rotateLead(Number(e.target.value))}
           className="flex-1 min-w-[120px] accent-teal-500" />
