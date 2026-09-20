@@ -22,7 +22,7 @@ export function buildTissueEvents(map, waves) {
         // delayed recovery after P. Ventricular recovery follows the T window.
         const recoveryStart = Math.max(end + 1, t ? t.center - 2 * t.sigma : end + 80)
         const recoveryEnd = Math.max(recoveryStart + 1, t ? t.center + 2 * t.sigma : end + 160)
-        return { start, end, recoveryStart, recoveryEnd, state: entry.state }
+        return { start, end, recoveryStart, recoveryEnd, state: entry.state, focusIndex: entry.focusIndex }
       })
     return [id, { events, disorganized: map.some(e => e.id === id && e.state === 'shimmer') }]
   }))
@@ -75,11 +75,15 @@ export function createTissueRenderer(canvas, elements) {
       const sourceY = id === 'ra' ? 425 : id === 'la' ? 412 : id === 'rv' ? 660 : 642
       const activation = Math.hypot(.8 * (sx - sourceX), sy - sourceY)
       const recovery = atrial ? activation : Math.hypot(.65 * (sx - (id === 'rv' ? 345 : 440)), sy - (id === 'rv' ? 513 : 478))
-      points.push({ offset: (y * width + x) * 4, activation, recovery, x: sx, y: sy })
+      const sources = atrial ? [[405, 415], [270, 475], [435, 475]] : [[465, 640], [325, 535], [490, 545]]
+      const ectopicActivation = sources.map(([x, y]) => Math.hypot(.8 * (sx - x), sy - y))
+      points.push({ ectopicActivation, offset: (y * width + x) * 4, activation, recovery, x: sx, y: sy })
       aMin = Math.min(aMin, activation); aMax = Math.max(aMax, activation)
       rMin = Math.min(rMin, recovery); rMax = Math.max(rMax, recovery)
     }
+    const ectopicBounds = [0, 1, 2].map(i => points.reduce(([lo, hi], p) => [Math.min(lo, p.ectopicActivation[i]), Math.max(hi, p.ectopicActivation[i])], [Infinity, -Infinity]))
     for (const p of points) {
+      p.ectopicActivation = p.ectopicActivation.map((v, i) => (v - ectopicBounds[i][0]) / (ectopicBounds[i][1] - ectopicBounds[i][0] || 1))
       p.activation = (p.activation - aMin) / (aMax - aMin || 1)
       p.recovery = (p.recovery - rMin) / (rMax - rMin || 1)
     }
@@ -95,7 +99,7 @@ export function createTissueRenderer(canvas, elements) {
         // coherent sinus wavefront. Its colors do not imply a mapped circuit.
         const color = descriptor.disorganized
           ? [...TISSUE_COLORS.depolarizing, Math.round(35 + 130 * Math.abs(Math.sin(p.x * .13 + time * .021) * Math.sin(p.y * .09 - time * .017)))]
-          : tissueColor(event, p.activation, p.recovery)
+          : tissueColor(event, event?.focusIndex !== undefined ? p.ectopicActivation[event.focusIndex] : p.activation, p.recovery)
         if (color) frame.data.set(color, p.offset)
       }
     }

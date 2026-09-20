@@ -1,4 +1,4 @@
-﻿import { useEffect, useRef, useMemo } from 'react'
+import { useEffect, useRef, useMemo } from 'react'
 import { buildTissueEvents, createTissueRenderer } from '../lib/myocardialWaves'
 
 // ─── Multi-beat conducted-beat series ──────────────────────────────────────
@@ -713,7 +713,7 @@ const REPOL_TABLE = {
 // ─── Main component ───────────────────────────────────────────────────────────
 export default function HeartAnimation({ clockRef, rhythmId, rhythm, className = '', width = 280, height = 330, tissueWaves = false, compact = false }) {
   const elRefs        = useRef({})
-  const conductionMap = useMemo(() => buildConductionMap(rhythmId, rhythm.waves), [rhythmId, rhythm])
+  const conductionMap = useMemo(() => rhythm.conductionMap ?? buildConductionMap(rhythmId, rhythm.waves), [rhythmId, rhythm])
 
   const tissueCanvas = useRef(null)
   const tissueTiming = useMemo(() => buildTissueEvents(conductionMap, rhythm.waves), [conductionMap, rhythm])
