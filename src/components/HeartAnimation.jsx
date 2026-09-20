@@ -711,7 +711,7 @@ const REPOL_TABLE = {
 }
 
 // ─── Main component ───────────────────────────────────────────────────────────
-export default function HeartAnimation({ clockRef, rhythmId, rhythm, className = '', width = 280, height = 330, tissueWaves = false }) {
+export default function HeartAnimation({ clockRef, rhythmId, rhythm, className = '', width = 280, height = 330, tissueWaves = false, compact = false }) {
   const elRefs        = useRef({})
   const conductionMap = useMemo(() => buildConductionMap(rhythmId, rhythm.waves), [rhythmId, rhythm])
 
@@ -935,7 +935,7 @@ export default function HeartAnimation({ clockRef, rhythmId, rhythm, className =
 
   return (
     <div className={`flex flex-col items-center ${className}`}>
-      <p className="text-xs uppercase tracking-widest text-gray-500 mb-2">Conduction System</p>
+      {!compact && <p className="text-xs uppercase tracking-widest text-gray-500 mb-2">Conduction System</p>}
       <svg viewBox="33.46476 45.636623 131.51485 155.00606" width={width} height={height} style={{ overflow: 'visible' }}>
         <defs>
           {/* Yellow glow for depolarization */}
@@ -1135,13 +1135,13 @@ export default function HeartAnimation({ clockRef, rhythmId, rhythm, className =
         )}
       </svg>
       {tissueWaves && (
-        <div className="mt-2 max-w-[210px] text-[10px] leading-relaxed text-gray-400">
-          <div className="flex flex-wrap justify-center gap-x-3 gap-y-1" aria-label="Tissue color legend">
+        <div className={`mt-2 text-[10px] leading-relaxed text-gray-400 ${compact ? 'w-max' : 'max-w-[210px]'}`}>
+          <div className={`flex justify-center gap-x-3 gap-y-1 ${compact ? 'whitespace-nowrap' : 'flex-wrap'}`} aria-label="Tissue color legend">
             <span><span style={{ color: '#fde047' }}>●</span> Depolarizing</span>
             <span><span style={{ color: '#df694c' }}>●</span> Depolarized</span>
             <span><span style={{ color: '#38bdf8' }}>●</span> Repolarizing</span>
           </div>
-          <p className="mt-1 text-center">Schematic waves; resting tissue returns to brown.</p>
+          {!compact && <p className="mt-1 text-center">Schematic waves; resting tissue returns to brown.</p>}
         </div>
       )}
     </div>

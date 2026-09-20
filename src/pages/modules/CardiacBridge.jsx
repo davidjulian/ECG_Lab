@@ -1748,9 +1748,9 @@ function HeartDropTarget({ clockRef, rhythm, selectedRegion, onSelect }) {
 
   return (
     <div className="relative rounded-xl border border-gray-800 bg-gray-900/60 p-2 flex flex-col items-center w-full max-w-md">
-      <div ref={stageRef} className="relative" style={{ width: '100%', maxWidth: 420, minHeight: H + 70 }}>
+      <div ref={stageRef} className="relative" style={{ width: '100%', maxWidth: 420, minHeight: H + 24 }}>
         <div className="mx-auto" style={{ width: W }}>
-          <HeartAnimation tissueWaves clockRef={clockRef} rhythmId="normalSinus" rhythm={rhythm} width={W} height={H} />
+          <HeartAnimation tissueWaves compact clockRef={clockRef} rhythmId="normalSinus" rhythm={rhythm} width={W} height={H} />
         </div>
         {[
           { side: 'left', top: 70, label: 'Right arm', polarity: '−' },
