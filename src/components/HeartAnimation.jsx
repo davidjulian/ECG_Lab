@@ -1141,7 +1141,6 @@ export default function HeartAnimation({ clockRef, rhythmId, rhythm, className =
             <span><span style={{ color: '#df694c' }}>●</span> Depolarized</span>
             <span><span style={{ color: '#38bdf8' }}>●</span> Repolarizing</span>
           </div>
-          {!compact && <p className="mt-1 text-center">Schematic waves; resting tissue returns to brown.</p>}
         </div>
       )}
     </div>
