@@ -699,8 +699,9 @@ export default function ECGSimulator() {
               </div>
               <div>
                 <ParamSlider label="Baseline AV recovery time" value={avRecoveryMs} min={100} max={1800} step={50} unit=" ms" disabled={isBlock} onChange={v => set('avRecoveryMs', v)}
-                  hint="A longer recovery time leaves more residual effects from preceding impulses. This can add delay and prevent conduction of an arriving impulse. Compare slow and fast atrial rates." />
+                  hint="A longer recovery time leaves more residual effects from preceding impulses. Increasing it may first prolong PR while every impulse still conducts. At longer recovery times, impulses may be blocked. The transition depends on atrial rate, refractoriness, and autonomic activity; it is not a fixed physiological threshold." />
                 <p className="text-xs text-gray-400 mt-2">With current influences: {Math.round(derived.effectiveAvRecoveryMs)} ms</p>
+                <p className="text-xs text-gray-400 mt-2">Explore the full range and watch several consecutive beats; a repeating pattern may extend beyond the visible strip.</p>
               </div>
               <div>
                 <p className="text-xs text-gray-400 mb-1">AV nodal conduction</p>
@@ -724,13 +725,13 @@ export default function ECGSimulator() {
                   hint="Automaticity of a distal ventricular pacemaker. It is normally suppressed by faster incoming impulses; it can supply escape beats or take over if its rate becomes faster. This is separate from premature activity." />
                 <p className="text-xs text-gray-400 mt-2">With current influences: {Math.round(derived.effectiveEctopicRate)} bpm</p>
               </div>
-              <Explanation title="Additional controls">
+              <div>
                 <p className="text-xs text-gray-400 mb-1">Intermittent distal conduction failure</p>
                 <SegBtn value={distalConductionFailure} onChange={v => set('distalConductionFailure', v)} options={[
                   { label: 'None', value: 'none' }, { label: 'Occasional', value: 'occasional' }, { label: 'Frequent', value: 'frequent' },
                 ]} />
-                <p className="text-xs text-gray-400 mt-2">Some impulses fail below the AV node. Begin with default AV settings to isolate this effect.</p>
-              </Explanation>
+                <Explanation title="Control explanation">Some impulses fail below the AV node. Begin with default AV settings to isolate this effect.</Explanation>
+              </div>
             </>}
 
             {openSection === 'ventricle' && <>
