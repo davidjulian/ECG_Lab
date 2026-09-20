@@ -1824,7 +1824,6 @@ function HeartDropTarget({ clockRef, rhythm, selectedRegion, onSelect }) {
           {AP_REGIONS.map(region => <option key={region.key} value={region.key}>{region.label}</option>)}
         </select>
       </label>
-      <p className="text-[11px] text-blue-300 mt-2 text-center">Blue pads: Lead II surface electrodes. Positions are schematic.</p>
     </div>
   )
 }
