@@ -1764,7 +1764,6 @@ function HeartDropTarget({ clockRef, rhythm, selectedRegion, onSelect }) {
               <text x="19" y="25" textAnchor="middle" fill="white" fontSize="21">{polarity}</text>
             </svg>
             <span className="font-semibold">{label} ({polarity})</span>
-            <span>Fixed skin electrode</span>
           </div>
         ))}
 
@@ -1928,7 +1927,7 @@ function ECGVsAPSection({ rhythm }) {
       {/* TOP — the heart itself: drag the electrode here */}
       <div className="rounded-xl border border-gray-800 bg-gray-900/60 p-3 flex flex-col md:flex-row items-center justify-center gap-3">
         <p className="text-xs text-gray-400 leading-relaxed md:w-44 md:shrink-0 max-w-md">
-          Drag the yellow intracellular microelectrode or use the Recording site menu to choose a cell. Its extracellular reference electrode is not shown. The blue skin electrodes stay fixed and record Lead II: left leg (+) minus right arm (−). Compare both traces before and after moving the yellow tip.
+          Drag the yellow intracellular microelectrode or use the Recording site menu to choose a cell. Its extracellular reference electrode is not shown. The blue electrodes are fixed skin electrodes that record Lead II: left leg (+) minus right arm (−). Compare both traces before and after moving the yellow tip.
         </p>
         <HeartDropTarget
           clockRef={clockRef}
