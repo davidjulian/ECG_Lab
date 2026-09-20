@@ -82,6 +82,31 @@ const PARAM_SECTIONS = [
   },
 ]
 
+// Labels and units for the compact summary of changes from defaults.
+const PARAM_SUMMARY = {
+  saAutomaticity: ['Automaticity', ' bpm'],
+  firingRegularity: ['Firing regularity', ''],
+  atrialConductionVelocityPct: ['Conduction velocity', '%'],
+  atrialRefractoryMs: ['Refractory period', ' ms'],
+  avConductionVelocityPct: ['Conduction velocity', '%'],
+  avRecoveryBehavior: ['Recovery pattern', ''],
+  avRefractoryMs: ['Refractory period', ' ms'],
+  purkinjeAutomaticity: ['Junctional automaticity', ' bpm'],
+  leftBundleVelocityPct: ['Left bundle velocity', '%'],
+  rightBundleVelocityPct: ['Right bundle velocity', '%'],
+  ventricularApdMs: ['Action potential duration', ' ms'],
+  repolHeterogeneity: ['Repolarization heterogeneity', ''],
+  ventricularEctopicRate: ['Ectopic automaticity', ' bpm'],
+  sympatheticTone: ['Sympathetic tone', '%'],
+  parasympatheticTone: ['Parasympathetic tone', '%'],
+  potassiumMEqL: ['Extracellular K⁺', ' mEq/L'],
+  calciumMgDl: ['Extracellular Ca²⁺', ' mg/dL'],
+}
+const summaryValue = (key, value) => {
+  const text = typeof value === 'string' ? value.charAt(0).toUpperCase() + value.slice(1) : value
+  return `${text}${PARAM_SUMMARY[key][1]}`
+}
+
 // ── Physiological interpretation banner ──────────────────────────────────────
 // A single {mechanismText, clinicalName, level} — mechanism always comes
 // first, the clinical/rhythm name only appears after. Priority-ordered from
@@ -320,6 +345,7 @@ export default function ECGSimulator() {
   const explanationKey = JSON.stringify([params, openSection, leadId])
   const menuRef       = useRef(null)
   const canvasRef     = useRef(null)
+  const controlsRef = useRef(null)
   const heartClockRef = useRef({ elapsedMs: 0, cycleMs: 800, tInCycle: 0, nativeCycleMs: null })
   const activeRef      = useRef({ leadId: 'II', rhythm: buildRhythmFromPhysiology(DEFAULT) })
 
@@ -379,6 +405,17 @@ export default function ECGSimulator() {
   const set = (key, val) => setParams(p => ({ ...p, [key]: val }))
 
   const activeSection  = PARAM_SECTIONS.find(s => s.id === openSection) ?? PARAM_SECTIONS[0]
+  const changedSettings = PARAM_SECTIONS.flatMap(section =>
+    section.keys.filter(key => params[key] !== DEFAULT[key]).map(key => ({ section, key }))
+  )
+  const showControls = sectionId => {
+    setOpenSection(sectionId)
+    setMenuOpen(false)
+    requestAnimationFrame(() => {
+      controlsRef.current?.focus({ preventScroll: true })
+      controlsRef.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' })
+    })
+  }
   const sectionChanged = (section) => section.keys.some(k => params[k] !== DEFAULT[k])
   const anyChanged     = PARAM_SECTIONS.some(sectionChanged)
 
@@ -484,6 +521,29 @@ export default function ECGSimulator() {
 
         </div>
 
+        <section aria-label="Changed settings" className="rounded-lg border border-gray-700 bg-gray-900/70 px-3 py-2">
+          {changedSettings.length === 0 ? (
+            <p className="text-xs text-gray-300">Default settings</p>
+          ) : (
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs font-semibold text-gray-300">Changed settings · {changedSettings.length}</span>
+              {changedSettings.map(({ section, key }) => (
+                <div key={key} className="relative group">
+                  <button type="button" onClick={() => showControls(section.id)}
+                    aria-describedby={`default-${key}`}
+                    className="rounded-md border border-emerald-700/60 bg-emerald-950/40 px-2 py-1 text-left text-xs text-emerald-100 hover:bg-emerald-900/60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-emerald-300">
+                    {section.label}: {PARAM_SUMMARY[key][0]} <strong className="tabular-nums">{summaryValue(key, params[key])}</strong>
+                  </button>
+                  <span id={`default-${key}`} role="tooltip"
+                    className="pointer-events-none absolute left-0 top-full z-30 mt-1 hidden whitespace-nowrap rounded border border-gray-600 bg-gray-950 px-2 py-1 text-xs text-white shadow-lg group-hover:block group-focus-within:block">
+                    Default: {summaryValue(key, DEFAULT[key])}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+
         {/* ══ ROW 2: interpretation banner | current EKG measurements ═════ */}
         <div className="flex gap-3 items-stretch">
 
@@ -526,7 +586,7 @@ export default function ECGSimulator() {
              (~1000px tall no matter what was actually being adjusted). A
              dropdown now picks one, so the ECG strip and heart animation above
              stay on screen alongside whichever slider is being dragged. */}
-        <div className="rounded-xl bg-gray-900 border border-gray-800 p-3">
+        <div ref={controlsRef} tabIndex={-1} aria-label="Structure controls" className="rounded-xl bg-gray-900 border border-gray-800 p-3 focus:outline-none">
 
           <div className="flex items-start gap-3 mb-2">
 
