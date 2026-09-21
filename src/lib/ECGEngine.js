@@ -350,7 +350,7 @@ export const RHYTHM_PRESETS = {
     flutterRate:         300,
     ventricularRate:     150,
     flutterAmplitude:    0.15,
-    flutterAxis:         -15,
+    flutterAxis:         60,
     qAmplitude:   -0.10,  rAmplitude: 1.10, sAmplitude: -0.20,
     qrsDuration:   75,    qrsAxis:    60,
     stElevation:   0,
@@ -533,27 +533,25 @@ function buildThirdDegreeWaves(preset) {
   return { waves, cycleMs, heartRateBpm: ventricularRate }
 }
 
+function flutterWaveform(period = 200, amplitude = .18, axisDeg = 60) {
+  return { name: 'F', shape: 'flutter', period, amplitude, axisDeg, center: 0, sigma: period / 6 }
+}
+
 function buildAtrialFlutterWaves(preset) {
   const { flutterRate, ventricularRate, flutterAmplitude, flutterAxis } = preset
   const flutterInterval     = 60000 / flutterRate     // e.g., 200 ms at 300 bpm
   const ventricularInterval = 60000 / ventricularRate // e.g., 400 ms at 150 bpm
   const cycleMs             = ventricularInterval      // one ventricular beat per cycle
 
-  const flutterWave = [
-    { name: 'F', amplitude:  flutterAmplitude,        center: 20, sigma: 12, axisDeg: flutterAxis },
-    { name: 'F', amplitude: -flutterAmplitude * 0.85, center: 55, sigma: 14, axisDeg: flutterAxis },
-  ]
-
-  const waves = []
-  for (let t = 0; t < cycleMs; t += flutterInterval)
-    waves.push(...placeBeat(t, flutterWave))
+  // Continuous asymmetric atrial activity, projected prominently into Lead II.
+  const waves = [flutterWaveform(flutterInterval, flutterAmplitude, flutterAxis)]
   waves.push(...placeBeat(flutterInterval, qrstTemplate(preset)))
 
   return { waves, cycleMs, heartRateBpm: ventricularRate }
 }
 
 function buildAFibWaves(preset) {
-  const { meanVentricularRate, fibrillatoryAmplitude } = preset
+  const { meanVentricularRate, fibrillatoryAmplitude = .07 } = preset
   const meanRR = 60000 / meanVentricularRate
 
   // True randomly-irregular RR intervals — baked in at build time so the
@@ -576,7 +574,7 @@ function buildAFibWaves(preset) {
   while (ft < cycleMs) {
     const spacing = 100 + Math.random() * 70               // 100–170 ms
     const polarity = Math.random() > 0.5 ? 1 : -1
-    const amp      = polarity * (0.05 + Math.random() * 0.05)  // ±0.05–0.10 mV
+    const amp      = polarity * fibrillatoryAmplitude * (0.7 + Math.random() * 0.7)  // ±0.05–0.10 mV
     const axis     = Math.random() * 360 - 180
     fbWaves.push({ name: 'f', amplitude: amp, center: ft, sigma: 9, axisDeg: axis })
     ft += spacing
@@ -787,6 +785,13 @@ export function expectedQtMs(heartRateBpm, qtcMs = 400) {
 
 export function cycleVoltage(tInCycleMs, waves, leadAxisDeg = LEADS.I.axisDeg) {
   return waves.reduce((sum, wave) => {
+    if (wave.shape === 'flutter') {
+      const phase = ((tInCycleMs % wave.period) + wave.period) % wave.period / wave.period
+      // Slow descent and brisk return, continuous across cycle boundaries.
+      const turn = .82
+      const value = phase < turn ? 1 - 2 * phase / turn : -1 + 2 * (phase - turn) / (1 - turn)
+      return sum + wave.amplitude * value * projectionFactor(wave.axisDeg, leadAxisDeg)
+    }
     if (Math.abs(tInCycleMs - wave.center) > 6 * wave.sigma) return sum
     const axis = wave.axisDeg ?? LEADS.I.axisDeg
     return sum + gaussian(tInCycleMs, wave.amplitude, wave.center, wave.sigma) * projectionFactor(axis, leadAxisDeg)
@@ -1291,17 +1296,17 @@ export function buildRhythmFromPhysiology(phys0) {
   let result
 
   if (atrialRegime === 'fibrillation') {
-    // AV node filters the chaotic atrial input — a faster effective AV
-    // refractory means MORE impulses are filtered out, so ventricular rate
-    // is inversely related to it.
+    // Illustrative AV filtering: recovery plus a mean wait for the next
+    // conducted input. Longer refractoriness lowers ventricular response.
+    // These are teaching-model relationships, not clinical thresholds.
     const meanVentricularRate = interrupted
       ? 0
-      : clamp(Math.round(90000 / Math.max(50, effectiveAvRefractoryMs)), 40, 180)
+      : clamp(Math.round(60000 / Math.max(50, effectiveAvRefractoryMs + .15 * effectiveAvRecoveryMs + 150)), 40, 180)
     derived.meanVentricularRateBpm = meanVentricularRate
     if (meanVentricularRate === 0) {
       result = buildEscapeOrStandstill({ purkinjeAutomaticity: distalComplete ? 0 : effectivePurkinjeRate, ventricularEctopicRate: effectiveEctopicRate, baseQRS, derived })
     } else {
-      const { waves, cycleMs, heartRateBpm } = buildAFibWaves({ meanVentricularRate, fibrillatoryAmplitude: 0.07, ...baseQRS })
+      const { waves, cycleMs, heartRateBpm } = buildAFibWaves({ meanVentricularRate, fibrillatoryAmplitude: 0.10, ...baseQRS })
       result = { waves, cycleMs, nativeCycleMs: cycleMs, measurable: false, heartRateBpm }
     }
   } else if (atrialRegime === 'flutter') {
@@ -1314,7 +1319,7 @@ export function buildRhythmFromPhysiology(phys0) {
     } else {
       const ventricularRate = 300 / ratio
       const { waves, cycleMs, heartRateBpm } = buildAtrialFlutterWaves({
-        flutterRate: 300, ventricularRate, flutterAmplitude: 0.15, flutterAxis: -15, ...baseQRS,
+        flutterRate: 300, ventricularRate, flutterAmplitude: 0.18, flutterAxis: 60, ...baseQRS,
       })
       result = { waves, cycleMs, nativeCycleMs: cycleMs, measurable: false, heartRateBpm }
     }
@@ -1383,10 +1388,7 @@ export function buildRhythmFromPhysiology(phys0) {
   if (derived.escapeSource !== undefined && atrialRegime !== 'organized') {
     derived.avRatio = Infinity
     if (atrialRegime === 'flutter') {
-      for (let t = 0; t < result.cycleMs; t += 200) result.waves.push(
-        { name: 'F', amplitude: .15, center: t + 20, sigma: 12, axisDeg: -15 },
-        { name: 'F', amplitude: -.1275, center: t + 55, sigma: 14, axisDeg: -15 },
-      )
+      result.waves.push(flutterWaveform())
     } else {
       for (let t = 0; t < result.cycleMs; t += 135) result.waves.push({
         name: 'f', amplitude: .07 * Math.sin(t * .17), center: t, sigma: 9, axisDeg: 60,
@@ -1464,7 +1466,7 @@ export function buildRhythmFromPhysiology(phys0) {
 
   derived.ventricularRateBpm = derived.ventricularRegime === 'fibrillation' ? null : Math.round(result.heartRateBpm ?? 0)
   if (result.nativeCycleMs) {
-    const tails = result.waves.filter(w => w.center + 4 * w.sigma > result.cycleMs)
+    const tails = result.waves.filter(w => w.shape !== 'flutter' && w.center + 4 * w.sigma > result.cycleMs)
       .map(w => ({ ...w, center: w.center - result.cycleMs }))
     result.waves = [...result.waves, ...tails]
   }

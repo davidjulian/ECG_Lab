@@ -48,3 +48,13 @@ test('fibrillation shows local activation, recovery, and rest and is stable whil
   const neighbor = { ...point, fibrillationPhase: point.fibrillationPhase + .5 }
   assert.notDeepEqual(fibrillationColor(point, 57), fibrillationColor(neighbor, 57))
 })
+
+
+test('flutter uses a regular repeating regional wave instead of fibrillation', async () => {
+  const { flutterColor, buildTissueEvents } = await import('../src/lib/myocardialWaves.js')
+  const timing = buildTissueEvents([{ id: 'ra', state: 'flutter', flutterPeriod: 200 }], [])
+  assert.equal(timing.ra.disorganized, false)
+  assert.equal(timing.ra.flutterPeriod, 200)
+  assert.deepEqual(flutterColor(.25, 70), flutterColor(.25, 270))
+  assert.notDeepEqual(flutterColor(.25, 70), flutterColor(.75, 70))
+})

@@ -284,8 +284,8 @@ export function buildConductionMap(rhythmId, waves) {
 
     case 'atrialFlutter': {
       const map = []
-      map.push({ id: 'ra', onsetMs: 0, offsetMs: 9999, state: 'shimmer', shimmerFreq: 0.016 })
-      map.push({ id: 'la', onsetMs: 0, offsetMs: 9999, state: 'shimmer', shimmerFreq: 0.016 })
+      map.push({ id: 'ra', onsetMs: 0, offsetMs: 9999, state: 'flutter', flutterPeriod: waves.find(w => w.name === 'F')?.period ?? 200 })
+      map.push({ id: 'la', onsetMs: 0, offsetMs: 9999, state: 'flutter', flutterPeriod: waves.find(w => w.name === 'F')?.period ?? 200 })
       const qWaves = waves.filter(wv => wv.name === 'Q')
       qWaves.forEach(qw => {
         const qOn  = qw.center - 2 * qw.sigma
@@ -784,10 +784,10 @@ export default function HeartAnimation({ clockRef, rhythmId, rhythm, className =
           return
         }
 
-        if (entry.state === 'shimmer') {
+        if (entry.state === 'shimmer' || entry.state === 'flutter') {
           const el = els[entry.id]
           if (!el) return
-          const f1 = entry.shimmerFreq  ?? 0.016
+          const f1 = entry.state === 'flutter' ? 2 * Math.PI / entry.flutterPeriod : entry.shimmerFreq ?? 0.016
           const f2 = entry.shimmerFreq2 ?? 0
           const osc = f2
             ? Math.abs(Math.sin(tMs * f1) * Math.sin(tMs * f2))

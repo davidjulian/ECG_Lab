@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { PHYSIOLOGY_EXAMPLES, exampleSettings, RESULTING_PROPERTIES } from '../src/lib/physiologyExamples.js'
-import { buildRhythmFromPhysiology as build, physiologyToRhythmId, PHYSIOLOGY_DEFAULTS } from '../src/lib/ECGEngine.js'
+import { buildRhythmFromPhysiology as build, physiologyToRhythmId, cycleVoltage, PHYSIOLOGY_DEFAULTS } from '../src/lib/ECGEngine.js'
 
 test('examples replace all tissue settings, including previous autonomic and ion changes', () => {
   for (const example of PHYSIOLOGY_EXAMPLES) {
@@ -39,4 +39,21 @@ test('resulting properties reflect combined influences while baseline controls r
   assert.ok(Math.abs(derived.effectiveSaRate - 91.5) < 0.01)
   assert.ok(Math.abs(derived.effectiveAvDelayMs - 118.125) < 0.01)
   assert.ok(derived.effectiveAvDelayMs !== derived.prIntervalMs)
+})
+
+
+test('flutter has continuous repeating atrial activity and AF example allows a slower response', () => {
+  const flutter = build(exampleSettings('flutter'))
+  const atrial = flutter.waves.filter(w => w.name === 'F')
+  assert.equal(atrial.length, 1)
+  assert.equal(atrial[0].period, 200)
+  assert.ok(cycleVoltage(0, atrial, 60) > .15)
+  assert.ok(cycleVoltage(164, atrial, 60) < -.15)
+  assert.ok(Math.abs(cycleVoltage(200, atrial, 60) - cycleVoltage(0, atrial, 60)) < 1e-10)
+  const settings = exampleSettings('af')
+  const slower = build(settings).derived
+  const faster = build({ ...settings, avRefractoryMs: 200 }).derived
+  assert.equal(slower.atrialRegime, 'fibrillation')
+  assert.ok(slower.ventricularRateBpm >= 80 && slower.ventricularRateBpm <= 100)
+  assert.ok(faster.ventricularRateBpm > slower.ventricularRateBpm)
 })

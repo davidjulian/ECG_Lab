@@ -24,7 +24,7 @@ export function buildTissueEvents(map, waves) {
         const recoveryEnd = Math.max(recoveryStart + 1, t ? t.center + 2 * t.sigma : end + 160)
         return { start, end, recoveryStart, recoveryEnd, state: entry.state, focusIndex: entry.focusIndex }
       })
-    return [id, { events, disorganized: map.some(e => e.id === id && e.state === 'shimmer') }]
+    return [id, { events, flutterPeriod: map.find(e => e.id === id && e.state === 'flutter')?.flutterPeriod, disorganized: map.some(e => e.id === id && e.state === 'shimmer') }]
   }))
 }
 
@@ -63,6 +63,15 @@ export function fibrillationColor(point, time) {
   if (phase < .10) return [...TISSUE_COLORS.depolarizing, 245]
   if (phase < .48) return [...TISSUE_COLORS.depolarized, 225]
   if (phase < .72) return [...TISSUE_COLORS.repolarizing, Math.round(225 * (1 - (phase - .48) / .24))]
+  return null
+}
+
+// One repeating front around the right atrium, with regular spread into LA.
+export function flutterColor(phase, time, period = 200) {
+  const local = ((time / period - phase) % 1 + 1) % 1
+  if (local < .10) return [...TISSUE_COLORS.depolarizing, 245]
+  if (local < .55) return [...TISSUE_COLORS.depolarized, 225]
+  if (local < .80) return [...TISSUE_COLORS.repolarizing, 200]
   return null
 }
 
@@ -111,6 +120,9 @@ export function createTissueRenderer(canvas, elements) {
       p.fibrillationPhase = nearest * .381966 + chamberPhase - distance / 95
       p.fibrillationPeriod = (atrial ? 145 : 175) + ((nearest * 37) % 85)
       p.fibrillationWarp = nearest * 1.7 + chamberPhase
+      p.flutterPhase = id === 'ra'
+        ? (Math.atan2(p.y - 460, p.x - 300) + Math.PI) / (2 * Math.PI)
+        : .25 + .65 * (p.activation - aMin) / (aMax - aMin || 1)
       p.ectopicActivation = p.ectopicActivation.map((v, i) => (v - ectopicBounds[i][0]) / (ectopicBounds[i][1] - ectopicBounds[i][0] || 1))
       p.activation = (p.activation - aMin) / (aMax - aMin || 1)
       p.recovery = (p.recovery - rMin) / (rMax - rMin || 1)
@@ -123,7 +135,9 @@ export function createTissueRenderer(canvas, elements) {
       const descriptor = timing[region.id]
       const event = latestTissueEvent(descriptor.events, time, period)
       for (const p of region.points) {
-        const color = descriptor.disorganized
+        const color = descriptor.flutterPeriod
+          ? flutterColor(p.flutterPhase, continuousTime, descriptor.flutterPeriod)
+          : descriptor.disorganized
           ? fibrillationColor(p, continuousTime)
           : tissueColor(event, event?.focusIndex !== undefined ? p.ectopicActivation[event.focusIndex] : p.activation, p.recovery)
         if (color) frame.data.set(color, p.offset)
