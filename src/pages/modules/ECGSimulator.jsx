@@ -66,7 +66,7 @@ const PARAM_SECTIONS = [
     id: 'ventricle',
     label: 'Ventricular Myocardium',
     description: 'Change the duration and regional variation of ventricular recovery, or introduce premature impulses that begin within ventricular tissue.',
-    keys: ['ventricularApdMs', 'ventricularPrematureActivity', 'ventricularPrematurityPct', 'ventricularPrematureFoci', 'repolHeterogeneity'],
+    keys: ['ventricularApdMs', 'ventricularConductionVelocityPct', 'ventricularPrematureActivity', 'ventricularPrematurityPct', 'ventricularPrematureFoci', 'repolHeterogeneity'],
   },
   {
     id: 'ans',
@@ -96,6 +96,7 @@ const PARAM_SUMMARY = {
   leftBundleVelocityPct: ['Left bundle velocity', '%'],
   rightBundleVelocityPct: ['Right bundle velocity', '%'],
   ventricularApdMs: ['Action potential duration', ' ms'],
+  ventricularConductionVelocityPct: ['Myocardial conduction', '%'],
   repolHeterogeneity: ['Repolarization heterogeneity', ''],
   ventricularEscapeRate: ['Backup automaticity', ' bpm'],
   distalConductionFailure: ['Intermittent conduction failure', ''],
@@ -122,6 +123,14 @@ const summaryValue = (key, value) => {
 // most to least clinically dominant so co-occurring derangements collapse to
 // one coherent story rather than a laundry list.
 function physiologicalInterpretation(derived) {
+  if (derived.ventricularRegime === 'fibrillation') return {
+    mechanismText: 'A premature impulse in tissue with slow conduction and large recovery differences selects sustained, fragmented ventricular activation in this model. There is no coordinated ventricular beat or effective pumping. The colored fronts illustrate disorganization, not measured reentry circuits.',
+    clinicalName: 'Ventricular Fibrillation', level: 'danger',
+  }
+  if (derived.ventricularRegime === 'tachycardia') return {
+    mechanismText: 'A premature impulse in tissue with slow conduction and uneven recovery selects a repeating ventricular activation sequence in this model. Broad complexes recur rapidly, independently of SA timing. Greater recovery differences select a disorganized pattern. These settings illustrate possible mechanisms, not clinical thresholds.',
+    clinicalName: 'Ventricular Tachycardia', level: 'danger',
+  }
   const withIonNote = (base) => {
     if (derived.escapeSource !== undefined && derived.atrialRegime !== 'organized') base = { ...base, mechanismText: `${base.mechanismText} AV conduction is interrupted; ventricular activity depends on a backup pacemaker.` }
     if (!derived.ionAlert || base.ionHandled) return base
@@ -139,13 +148,13 @@ function physiologicalInterpretation(derived) {
   }
   if (derived.atrialRegime === 'fibrillation') {
     return withIonNote({
-      mechanismText: 'The combination of atrial conduction velocity and refractory period permits re-entry in this model — multiple simultaneous circuits sustain disorganized activity.',
-      clinicalName: 'Atrial Fibrillation', level: 'danger',
+      mechanismText: 'Shorter refractoriness or slower conduction can favor reentry. This model selects representative atrial fibrillation at these settings; it does not simulate its initiating trigger or predict when AF will occur. Local atrial regions activate out of step, while the AV node filters impulses reaching the ventricles.',
+      clinicalName: 'Atrial Fibrillation', level: 'warn',
     })
   }
   if (derived.atrialRegime === 'flutter') {
     return withIonNote({
-      mechanismText: 'Re-entry established — a single circuit is sustaining itself. Rapid organized atrial activation produces repeated flutter waves.',
+      mechanismText: 'These settings select representative atrial flutter: rapid, organized atrial activation sustained by a repeating circuit. The model illustrates the resulting activity rather than calculating formation of that circuit.',
       clinicalName: 'Atrial Flutter', level: 'warn',
     })
   }
@@ -197,6 +206,10 @@ function physiologicalInterpretation(derived) {
       clinicalName: 'Right Bundle Branch Block', level: 'warn',
     })
   }
+  if (derived.myocardialSlowing > .1) return withIonNote({
+    mechanismText: 'Slower cell-to-cell conduction prolongs the spread of ventricular activation and broadens QRS. This differs from slowing conduction through a specific bundle branch.',
+    clinicalName: 'Slowed Ventricular Myocardial Conduction', level: 'warn',
+  })
   if (derived.prIntervalMs > 200) {
     return withIonNote({
       mechanismText: 'AV nodal conduction is delayed. Each atrial impulse reaches the ventricles, but PR is prolonged.',
@@ -428,7 +441,7 @@ export default function ECGSimulator() {
     atrialConductionVelocityPct, atrialRefractoryMs,
     avDelayMs, avRecoveryMs, avConduction, avRefractoryMs,
     leftBundleVelocityPct, rightBundleVelocityPct, purkinjeAutomaticity,
-    ventricularApdMs, repolHeterogeneity, ventricularEscapeRate, distalConductionFailure,
+    ventricularApdMs, ventricularConductionVelocityPct, repolHeterogeneity, ventricularEscapeRate, distalConductionFailure,
     sympatheticTone, parasympatheticTone,
     potassiumMEqL, calciumMgDl,
   } = params
@@ -571,7 +584,7 @@ export default function ECGSimulator() {
             <div className="flex flex-wrap gap-x-5 gap-y-1.5 text-sm font-mono">
               <span className="text-gray-400">PR <span className="font-bold tabular-nums" style={{ color: prColor }}>{prText}</span></span>
               <span className="text-gray-400">Atrial rate <span className="text-gray-200">{derived.atrialRateBpm === null ? 'Disorganized' : `${Math.round(derived.atrialRateBpm)} bpm`}</span></span>
-              <span className="text-gray-400">Ventricular rate <span className="text-gray-200">{derived.ventricularRateBpm} bpm</span></span>
+              <span className="text-gray-400">Ventricular rate <span className="text-gray-200">{derived.ventricularRateBpm === null ? 'Disorganized' : `${derived.ventricularRateBpm} bpm`}</span></span>
               <span className="text-gray-400">QRS <span className="font-bold tabular-nums" style={{ color: qrsColor }}>{derived.qrsRangeMs ? `${Math.round(derived.qrsRangeMs[0])}–${Math.round(derived.qrsRangeMs[1])} ms` : derived.qrsDurationMs ? `${Math.round(derived.qrsDurationMs)} ms` : '—'}</span></span>
               <span className="text-gray-400">QT <span className="font-bold tabular-nums text-gray-300">{derived.qtRangeMs ? `${Math.round(derived.qtRangeMs[0])}–${Math.round(derived.qtRangeMs[1])} ms` : derived.qtIntervalMs ? `${Math.round(derived.qtIntervalMs)} ms` : '—'}</span></span>
               <span className="text-gray-400">QTc <span className="font-bold tabular-nums" style={{ color: qtcColor }}>{qtcMs ? `${qtcMs}ms` : '—'}</span></span>
@@ -679,7 +692,10 @@ export default function ECGSimulator() {
               <ParamSlider label="Atrial conduction velocity" value={atrialConductionVelocityPct} min={20} max={100} unit="%" onChange={v => set('atrialConductionVelocityPct', v)}
                 hint="Change how quickly activation spreads through atrial tissue. Together with refractory period, conduction speed affects the conditions favoring reentry." />
               <ParamSlider label="Atrial refractory period" value={atrialRefractoryMs} min={150} max={350} unit=" ms" onChange={v => set('atrialRefractoryMs', v)}
-                hint="Time during which atrial tissue cannot be re-excited. Shorter conduction wavelengths select illustrative flutter or fibrillation patterns; the thresholds are model settings, not clinical cutoffs." />
+                hint="Time during which atrial tissue cannot be re-excited. Shortening it can favor reentry, but does not inevitably cause AF. The model selects representative flutter or fibrillation without simulating the initiating trigger; its thresholds are not clinical cutoffs." />
+              <Explanation title="Explore sustained atrial activity">
+                From default settings, lower the atrial refractory period to 190 ms, then 150 ms. Watch the atria and compare successive ventricular beats. Try 0.25× speed. These settings select illustrative flutter and fibrillation; they are not clinical thresholds.
+              </Explanation>
               <div>
                 <PrematureControls site="atrial" params={params} set={set} disabled={atrialReentry || saAutomaticity === 0} />
                 {(atrialReentry || saAutomaticity === 0) && <p className="text-xs text-gray-400 mt-2">Premature activity is available with organized SA firing. These settings are retained while another atrial rhythm is active.</p>}
@@ -735,6 +751,8 @@ export default function ECGSimulator() {
             </>}
 
             {openSection === 'ventricle' && <>
+              <ParamSlider label="Ventricular myocardial conduction" value={ventricularConductionVelocityPct} min={20} max={100} unit="%" onChange={v => set('ventricularConductionVelocityPct', v)}
+                hint="Change cell-to-cell spread within ventricular muscle, separately from the bundle branches. Slower spread broadens QRS. With uneven recovery and a premature impulse, slow conduction can favor sustained reentry in a suitable pathway." />
               <div>
                 <ParamSlider label="Baseline ventricular action potential duration" value={ventricularApdMs} min={200} max={500} unit=" ms" onChange={v => set('ventricularApdMs', v)}
                   hint="Change the duration of ventricular electrical recovery independently of SA firing. Autonomic activity can modify both. QT reflects activation and recovery across the ventricles, not an exact measurement of one cell’s action potential." />
@@ -744,12 +762,15 @@ export default function ECGSimulator() {
                 <PrematureControls site="ventricular" params={params} set={set} disabled={atrialReentry || derived.escapeSource !== undefined} />
                 {(atrialReentry || derived.escapeSource !== undefined) && <p className="text-xs text-gray-400 mt-2">Premature activity is available during organized atrial conduction. These settings are retained while another rhythm is active.</p>}
               </div>
-              <Explanation title="Additional controls">
+              <div>
                 <p className="text-xs text-gray-400 mb-1">Repolarization heterogeneity</p>
                 <SegBtn value={repolHeterogeneity} onChange={v => set('repolHeterogeneity', v)} options={[
                   { label: 'Low', value: 'none' }, { label: 'Moderate', value: 'moderate' }, { label: 'High', value: 'high' },
                 ]} />
-                <p className="text-xs text-gray-400 mt-2">Change regional differences in recovery to explore representative T wave changes. This setting does not by itself initiate premature beats.</p>
+                <p className="text-xs text-gray-400 mt-2">Regional differences in recovery. This setting alone does not initiate premature beats.</p>
+              </div>
+              <Explanation title="Explore sustained ventricular activity">
+                From default settings, set ventricular premature activity to Frequent, myocardial conduction to 30%, and repolarization heterogeneity to Moderate. Compare this with High heterogeneity. Use 0.25× speed to inspect the waves. This model selects representative VT and VF patterns; the settings are not clinical thresholds. Reset this structure to return to its baseline properties.
               </Explanation>
             </>}
 
@@ -818,7 +839,7 @@ export default function ECGSimulator() {
           </div>
         </div>
         <Explanation title="Model explanation" className="mt-3">
-          This model uses representative waveforms and simplified physiological relationships. Timing depends on preceding impulses; parameter thresholds are teaching settings rather than clinical cutoffs. Multifocal activity uses several illustrative activation paths. Changing a control redraws the entire trace for the current settings, rather than recording the transition between conditions.
+          This model uses representative waveforms and simplified physiological relationships. Timing depends on preceding impulses; parameter thresholds are teaching settings rather than clinical cutoffs. Sustained rhythms illustrate possible outcomes, not a calculated reentry circuit or the likelihood of developing that rhythm. Fibrillation colors show local activation and recovery rather than a measured tissue map. Multifocal activity uses several illustrative activation paths. Changing a control redraws the entire trace for the current settings, rather than recording the transition between conditions.
         </Explanation>
       </div>
     </ModulePage>

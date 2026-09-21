@@ -1050,6 +1050,7 @@ export const PHYSIOLOGY_DEFAULTS = {
 
   // Section 5 — Ventricular Myocardium
   ventricularApdMs:      380,    // ≈ QT interval
+  ventricularConductionVelocityPct: 100,
   repolHeterogeneity:    'none', // 'none' | 'moderate' | 'high'
   ventricularPrematureActivity: 'off',
   ventricularPrematurityPct: 65,
@@ -1246,7 +1247,8 @@ export function buildRhythmFromPhysiology(phys0) {
   const rightImp   = bundleImpairment(phys.rightBundleVelocityPct)
   const maxImp     = Math.max(leftImp, rightImp)
   const bundleSide = leftImp >= rightImp ? 'left' : 'right'
-  const qrsDuration = 85 + maxImp * 65
+  const myocardialSlowing = (100 - clamp(phys.ventricularConductionVelocityPct, 20, 100)) / 80
+  const qrsDuration = 85 + maxImp * 65 + myocardialSlowing * 65
   const qrsAxisTarget = bundleSide === 'left' ? AXIS_TARGETS.left : AXIS_TARGETS.right
   const qrsAxis = lerp(60, qrsAxisTarget, maxImp)
   const rAmplitude = lerp(1.50, 0.90, maxImp)
@@ -1271,6 +1273,7 @@ export function buildRhythmFromPhysiology(phys0) {
   derived.qrsAxisDeg     = qrsAxis
   derived.leftImpairment = leftImp
   derived.rightImpairment = rightImp
+  derived.myocardialSlowing = myocardialSlowing
   derived.heterogeneity  = repolHeterogeneity
 
   // ── Atrial regime ─────────────────────────────────────────────────────
@@ -1390,7 +1393,55 @@ export function buildRhythmFromPhysiology(phys0) {
       })
     }
   }
-  result.waves = applyIonEffects(result.waves, potassiumMEqL, calciumMgDl, derived)
+  // A trigger and a vulnerable substrate select illustrative sustained rhythms.
+  // These thresholds are teaching settings, not a computed reentry circuit or
+  // a clinical prediction. Heterogeneity or a PVC alone must not produce VF.
+  const ventricularReentry = phys.ventricularConductionVelocityPct <= 40
+    && repolHeterogeneity !== 'none' && derived.ventricularPrematureBeats > 0
+  derived.ventricularRegime = ventricularReentry
+    ? (repolHeterogeneity === 'high' ? 'fibrillation' : 'tachycardia') : 'organized'
+  if (ventricularReentry) {
+    const atrialIds = ['sa', 'ra', 'la', 'bachmann', 'ectopicFocus']
+    const conductionMap = (result.conductionMap ?? []).filter(e => atrialIds.includes(e.id))
+    const fibrillating = derived.ventricularRegime === 'fibrillation'
+    const waves = fibrillating ? buildVFibWaves(result.cycleMs)
+      : result.waves.filter(w => w.name === 'P')
+    const beatCount = Math.max(3, Math.round(result.cycleMs / (60000 / 180)))
+    const intervalMs = result.cycleMs / beatCount
+    if (fibrillating) {
+      for (const id of ['rv', 'lv']) conductionMap.push({ id, onsetMs: 0, offsetMs: result.cycleMs, state: 'shimmer' })
+    } else {
+      const template = qrstTemplate({ ...baseQRS, qrsDuration: 170,
+        qtInterval: Math.min(280, intervalMs - 35), tDuration: 90,
+        qrsAxis: -70, rAmplitude: 1.4, sAmplitude: -.4, tAmplitude: .35, tAxis: 110,
+      })
+      for (let i = 0; i < beatCount; i++) {
+        const beatId = i * intervalMs
+        const beat = placeBeat(beatId, template).map(w => ({ ...w, beatId }))
+        waves.push(...beat)
+        const q = beat.find(w => w.name === 'Q'), s = beat.find(w => w.name === 'S')
+        for (const id of ['rv', 'lv']) conductionMap.push({ id,
+          onsetMs: q.center - 2 * q.sigma, offsetMs: s.center + 2 * s.sigma,
+          state: 'ectopic', focusIndex: 0,
+        })
+      }
+    }
+    result = { waves, cycleMs: result.cycleMs, nativeCycleMs: result.cycleMs,
+      measurable: false, heartRateBpm: fibrillating ? null : 60000 / intervalMs, conductionMap }
+    derived.prIntervalMs = null
+    derived.prRangeMs = null
+    derived.avRatio = null
+    derived.conductionCounts = null
+    derived.avBlockPattern = null
+    derived.ventricularRefractoryBlocks = 0
+    derived.qrsAxisDeg = fibrillating ? null : -70
+    derived.qrsDurationMs = fibrillating ? null : 170
+    derived.qtIntervalMs = fibrillating ? null : Math.min(280, intervalMs - 35)
+  }
+  // A fibrillatory trace has no individual QRS/T waves to modify or measure.
+  if (derived.ventricularRegime !== 'fibrillation') {
+    result.waves = applyIonEffects(result.waves, potassiumMEqL, calciumMgDl, derived)
+  }
 
   if (derived.qtIntervalMs !== null) {
     const beatIds = [...new Set(result.waves.filter(w => w.beatId !== undefined).map(w => w.beatId))]
@@ -1411,7 +1462,7 @@ export function buildRhythmFromPhysiology(phys0) {
     result.measurable = false
   }
 
-  derived.ventricularRateBpm = Math.round(result.heartRateBpm ?? 0)
+  derived.ventricularRateBpm = derived.ventricularRegime === 'fibrillation' ? null : Math.round(result.heartRateBpm ?? 0)
   if (result.nativeCycleMs) {
     const tails = result.waves.filter(w => w.center + 4 * w.sigma > result.cycleMs)
       .map(w => ({ ...w, center: w.center - result.cycleMs }))
@@ -1427,7 +1478,9 @@ export function buildRhythmFromPhysiology(phys0) {
 // organized rhythms supply explicit activation events. Other illustrative
 // patterns use the existing rhythm-specific animation.
 export function physiologyToRhythmId(derived) {
-  if (derived.ionAlert?.startsWith('Sine-wave')) return 'vfib'
+  if (derived.ventricularRegime === 'fibrillation') return 'vfib'
+  if (derived.ionAlert?.startsWith('Sine-wave')) return 'hyperkalemia'
+  if (derived.ventricularRegime === 'tachycardia') return 'vtach'
   if (derived.atrialRegime === 'fibrillation') return 'atrialFibrillation'
   if (derived.atrialRegime === 'flutter')      return 'atrialFlutter'
   // `escapeSource` is set (even to 'none') whenever buildEscapeOrStandstill

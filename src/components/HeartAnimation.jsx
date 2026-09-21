@@ -216,15 +216,18 @@ export function buildConductionMap(rhythmId, waves) {
       return map
     }
 
-    // Sine-wave hyperkalemia: QRS and T have merged into one indistinct
-    // blob (see applyIonEffects) — there is no organized SA→AV→His
-    // sequence left to show, so unlike the default fallback (which would
-    // fabricate a normal-looking beat from missing-wave defaults), show
-    // the ventricles as continuously chaotic instead of a false normal beat.
     case 'vfib':
-      return ['ra', 'la', 'rv', 'lv', 'apex'].map(id => ({
+      // VF does not imply that the atria also fibrillate. Physiology rhythms
+      // supply their independent atrial events in an explicit conduction map.
+      return ['rv', 'lv', 'apex'].map(id => ({
         id, onsetMs: 0, offsetMs: 9999, state: 'shimmer', shimmerFreq: 0.05, shimmerFreq2: 0.033,
       }))
+
+    case 'hyperkalemia':
+      // A merged QRS–T sine wave is not ventricular fibrillation.
+      return waves.filter(wv => wv.name === 'R').flatMap(wv => ['rv', 'lv'].map(id => ({
+        id, onsetMs: wv.center - 2 * wv.sigma, offsetMs: wv.center + 2 * wv.sigma, state: 'active',
+      })))
 
     case 'lbbb': {
       // The real QRS widens continuously with impairment severity
@@ -727,7 +730,7 @@ export default function HeartAnimation({ clockRef, rhythmId, rhythm, className =
     const renderTissue = tissueWaves ? createTissueRenderer(tissueCanvas.current, elRefs.current) : null
 
     const frame = () => {
-      const { tInCycle, cycleMs, nativeCycleMs } = clockRef.current
+      const { tInCycle, cycleMs, nativeCycleMs, elapsedMs } = clockRef.current
       const tMs = nativeCycleMs !== null
         ? tInCycle * (nativeCycleMs / cycleMs)
         : tInCycle
@@ -923,7 +926,7 @@ export default function HeartAnimation({ clockRef, rhythmId, rhythm, className =
         el.style.opacity = '1'
       })
 
-      if (renderTissue) renderTissue(tMs, nativeCycleMs ?? cycleMs, timingRef.current)
+      if (renderTissue) renderTissue(tMs, nativeCycleMs ?? cycleMs, timingRef.current, elapsedMs ?? tMs)
       rafId = requestAnimationFrame(frame)
     }
 

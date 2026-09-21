@@ -1,6 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { buildRhythmFromPhysiology as build, ECGVoltage, PHYSIOLOGY_DEFAULTS } from '../src/lib/ECGEngine.js'
+import { buildRhythmFromPhysiology as build, ECGVoltage, physiologyToRhythmId, PHYSIOLOGY_DEFAULTS } from '../src/lib/ECGEngine.js'
+import { buildTissueEvents } from '../src/lib/myocardialWaves.js'
 
 const beats = rhythm => rhythm.timing.ventricles
 const premature = rhythm => beats(rhythm).filter(e => e.source === 'premature')
@@ -144,4 +145,52 @@ test('parameter combinations produce finite waveforms and valid measurements', (
       }
     }
   }
+})
+
+const vulnerableVentricle = { ventricularConductionVelocityPct: 30, ventricularPrematureActivity: 'frequent' }
+test('myocardial slowing broadens QRS without creating a bundle block or changing SA rate', () => {
+  const normal = build({}), slow = build({ ventricularConductionVelocityPct: 30 })
+  assert.ok(slow.derived.qrsDurationMs > normal.derived.qrsDurationMs)
+  assert.equal(slow.derived.ventricularRegime, 'organized')
+  assert.equal(slow.derived.leftImpairment, 0)
+  assert.equal(slow.derived.ventricularRateBpm, 75)
+})
+
+test('a premature impulse and vulnerable tissue together select VT or VF', () => {
+  for (const params of [
+    { repolHeterogeneity: 'high' },
+    { ...vulnerableVentricle },
+    { ventricularConductionVelocityPct: 30, repolHeterogeneity: 'high' },
+    { ventricularPrematureActivity: 'frequent', repolHeterogeneity: 'high' },
+  ]) assert.equal(build(params).derived.ventricularRegime, 'organized')
+  const vt = build({ ...vulnerableVentricle, repolHeterogeneity: 'moderate' })
+  assert.equal(physiologyToRhythmId(vt.derived), 'vtach')
+  assert.ok(vt.derived.ventricularRateBpm > 150)
+  assert.equal(vt.derived.atrialRateBpm, 75)
+  assert.ok(vt.derived.qrsDurationMs > 120)
+  assert.equal(vt.derived.prIntervalMs, null)
+  const ventricularEvents = vt.conductionMap.filter(e => e.id === 'lv')
+  assert.equal(ventricularEvents.length, vt.waves.filter(w => w.name === 'R' && w.center >= 0).length)
+  assert.ok(ventricularEvents.length > vt.conductionMap.filter(e => e.id === 'ra').length)
+  const vf = build({ ...vulnerableVentricle, repolHeterogeneity: 'high' })
+  assert.equal(physiologyToRhythmId(vf.derived), 'vfib')
+  for (const field of ['ventricularRateBpm', 'prIntervalMs', 'qrsDurationMs', 'qtIntervalMs']) assert.equal(vf.derived[field], null)
+  assert.ok(vf.waves.every(w => w.name === 'f'))
+  const tissue = buildTissueEvents(vf.conductionMap, vf.waves)
+  assert.equal(tissue.ra.disorganized, false)
+  assert.ok(tissue.ra.events.length > 0)
+  assert.equal(tissue.rv.disorganized, true)
+  assert.equal(tissue.lv.disorganized, true)
+  assert.equal(tissue.lv.events.length, 0)
+  const voltages = Array.from({ length: 1000 }, (_, i) => ECGVoltage(i * 11, vf.cycleMs, vf.waves, 60, vf.nativeCycleMs))
+  assert.ok(voltages.every(Number.isFinite))
+  assert.ok(Math.max(...voltages) - Math.min(...voltages) > .5)
+})
+
+test('reset restores organized activity and hyperkalemic sine waves are not labeled VF', () => {
+  const restored = build(PHYSIOLOGY_DEFAULTS)
+  assert.equal(restored.derived.ventricularRegime, 'organized')
+  assert.equal(physiologyToRhythmId(restored.derived), 'normalSinus')
+  const potassium = build({ potassiumMEqL: 9 })
+  assert.equal(physiologyToRhythmId(potassium.derived), 'hyperkalemia')
 })

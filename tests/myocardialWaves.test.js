@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { buildTissueEvents, latestTissueEvent, tissueColor } from '../src/lib/myocardialWaves.js'
+import { buildTissueEvents, latestTissueEvent, tissueColor, fibrillationColor } from '../src/lib/myocardialWaves.js'
 const map = [{ id: 'lv', onsetMs: 180, offsetMs: 250, state: 'active' }]
 const timing = buildTissueEvents(map, [{ name: 'T', center: 380, sigma: 35 }])
 const event = timing.lv.events[0]
@@ -35,4 +35,16 @@ test('fibrillation stays disorganized and never gains a sinus activation event',
   const result = buildTissueEvents([{ id: 'ra', state: 'shimmer' }], [])
   assert.equal(result.ra.disorganized, true)
   assert.equal(result.ra.events.length, 0)
+})
+
+test('fibrillation shows local activation, recovery, and rest and is stable while paused', () => {
+  const point = { fibrillationPhase: .31, fibrillationPeriod: 180, fibrillationWarp: .8 }
+  const colors = Array.from({ length: 200 }, (_, time) => fibrillationColor(point, time))
+  assert.ok(colors.some(c => c === null))
+  assert.ok(colors.some(c => c?.[0] === 253))
+  assert.ok(colors.some(c => c?.[0] === 223))
+  assert.ok(colors.some(c => c?.[0] === 56))
+  assert.deepEqual(fibrillationColor(point, 57), fibrillationColor(point, 57))
+  const neighbor = { ...point, fibrillationPhase: point.fibrillationPhase + .5 }
+  assert.notDeepEqual(fibrillationColor(point, 57), fibrillationColor(neighbor, 57))
 })

@@ -52,3 +52,15 @@ Activation events follow the simulator’s conduction map, including delayed and
 Physiology background: [normal human activation and repolarization](https://pmc.ncbi.nlm.nih.gov/articles/PMC1458874/) and [regional and transmural contributions to recovery](https://pmc.ncbi.nlm.nih.gov/articles/PMC2662714/). These sources describe why the spatial display must be treated as an approximation.
 
 Wave timing checks: `node --test tests/myocardialWaves.test.js`.
+
+## Exploring AF, VT, and VF in Module 4
+
+Start each comparison with **Reset all** and use **0.25×** playback to inspect the heart animation.
+
+- **AF:** Under Atrial Myocardium, reduce Atrial refractory period to 150 ms. Local atrial regions activate and recover asynchronously; distinct ventricular activations follow the irregular QRS complexes. Short refractoriness and slow conduction favor reentry, but the model's automatic pattern selection does not simulate the initiating trigger or predict an AF threshold.
+- **VT:** Under Ventricular Myocardium, select Frequent premature activity, set Ventricular myocardial conduction to 30%, and set Repolarization heterogeneity to Moderate. Broad complexes and repeated ventricular activation occur independently of SA timing.
+- **VF:** Change heterogeneity to High in that ventricular setup. Ventricular activation becomes fragmented, and the ECG has no discrete QRS/T complexes or measurable ventricular beat rate. Atrial activation does not automatically become fibrillatory.
+
+The ventricular selections require both a premature impulse and a vulnerable substrate. These combinations select schematic sustained rhythms, not clinical cutoffs or a simulated propagation circuit. Reset this structure restores its baseline properties; Reset all also clears other structures. Fibrillation uses deterministic local wavelets, sharing the playback clock so Pause freezes both displays. A hyperkalemic sine-wave pattern remains distinct from VF.
+
+Physiology context: [reentry and tissue recovery](https://cvphysiology.com/arrhythmias/a008c) and [mechanisms of atrial fibrillation](https://journals.physiology.org/doi/10.1152/physrev.00031.2009).

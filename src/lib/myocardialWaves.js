@@ -54,6 +54,18 @@ export function tissueColor(event, activation, recovery) {
   return [...front.map((c, i) => Math.round(c + (TISSUE_COLORS.depolarized[i] - c) * blend)), 230]
 }
 
+// Local activation/recovery cycles form broken fronts instead of making an
+// entire chamber flash together. This is an illustration, not an ionic model
+// or a reconstruction of the circuits underlying the surface tracing.
+export function fibrillationColor(point, time) {
+  const phase = ((time / point.fibrillationPeriod + point.fibrillationPhase
+    + .10 * Math.sin(time * .003 + point.fibrillationWarp)) % 1 + 1) % 1
+  if (phase < .10) return [...TISSUE_COLORS.depolarizing, 245]
+  if (phase < .48) return [...TISSUE_COLORS.depolarized, 225]
+  if (phase < .72) return [...TISSUE_COLORS.repolarizing, Math.round(225 * (1 - (phase - .48) / .24))]
+  return null
+}
+
 export function createTissueRenderer(canvas, elements) {
   // The source chamber paths all use this same local SVG coordinate system.
   const left = 230, top = 390, width = 270, height = 290
@@ -77,28 +89,42 @@ export function createTissueRenderer(canvas, elements) {
       const recovery = atrial ? activation : Math.hypot(.65 * (sx - (id === 'rv' ? 345 : 440)), sy - (id === 'rv' ? 513 : 478))
       const sources = atrial ? [[405, 415], [270, 475], [435, 475]] : [[465, 640], [325, 535], [490, 545]]
       const ectopicActivation = sources.map(([x, y]) => Math.hypot(.8 * (sx - x), sy - y))
-      points.push({ ectopicActivation, offset: (y * width + x) * 4, activation, recovery, x: sx, y: sy })
+      points.push({ ectopicActivation, offset: (y * width + x) * 4, activation, recovery,
+        x: sx, y: sy,
+      })
       aMin = Math.min(aMin, activation); aMax = Math.max(aMax, activation)
       rMin = Math.min(rMin, recovery); rMax = Math.max(rMax, recovery)
     }
+    // Separate local wavelets: no single sweeping front or chamber-wide flash.
+    // Seed locations and phases are deterministic, so pause freezes the image.
+    const atrial = id === 'ra' || id === 'la'
+    const seeds = Array.from({ length: atrial ? 9 : 13 }, (_, i) =>
+      points[Math.floor(((i * .61803398875 + .23) % 1) * points.length)])
     const ectopicBounds = [0, 1, 2].map(i => points.reduce(([lo, hi], p) => [Math.min(lo, p.ectopicActivation[i]), Math.max(hi, p.ectopicActivation[i])], [Infinity, -Infinity]))
     for (const p of points) {
+      let nearest = 0, distance = Infinity
+      seeds.forEach((seed, i) => {
+        const d = Math.hypot(p.x - seed.x, p.y - seed.y)
+        if (d < distance) { distance = d; nearest = i }
+      })
+      const chamberPhase = IDS.indexOf(id) * .37
+      p.fibrillationPhase = nearest * .381966 + chamberPhase - distance / 95
+      p.fibrillationPeriod = (atrial ? 145 : 175) + ((nearest * 37) % 85)
+      p.fibrillationWarp = nearest * 1.7 + chamberPhase
       p.ectopicActivation = p.ectopicActivation.map((v, i) => (v - ectopicBounds[i][0]) / (ectopicBounds[i][1] - ectopicBounds[i][0] || 1))
       p.activation = (p.activation - aMin) / (aMax - aMin || 1)
       p.recovery = (p.recovery - rMin) / (rMax - rMin || 1)
     }
     return { id, points }
   })
-  return (time, period, timing) => {
+  return (time, period, timing, continuousTime = time) => {
     frame.data.fill(0)
     for (const region of regions) {
       const descriptor = timing[region.id]
       const event = latestTissueEvent(descriptor.events, time, period)
       for (const p of region.points) {
-        // Fibrillation remains disorganized instead of acquiring a false
-        // coherent sinus wavefront. Its colors do not imply a mapped circuit.
         const color = descriptor.disorganized
-          ? [...TISSUE_COLORS.depolarizing, Math.round(35 + 130 * Math.abs(Math.sin(p.x * .13 + time * .021) * Math.sin(p.y * .09 - time * .017)))]
+          ? fibrillationColor(p, continuousTime)
           : tissueColor(event, event?.focusIndex !== undefined ? p.ectopicActivation[event.focusIndex] : p.activation, p.recovery)
         if (color) frame.data.set(color, p.offset)
       }
