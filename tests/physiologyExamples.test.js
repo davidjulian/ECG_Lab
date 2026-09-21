@@ -36,7 +36,7 @@ test('resulting properties reflect combined influences while baseline controls r
   const derived = build(params).derived
   assert.equal(params.saAutomaticity, 75)
   assert.equal(params.avDelayMs, 125)
-  assert.ok(Math.abs(derived.effectiveSaRate - 91.5) < 0.01)
+  assert.ok(Math.abs(derived.effectiveSaRate - 124.5) < 0.01)
   assert.ok(Math.abs(derived.effectiveAvDelayMs - 118.125) < 0.01)
   assert.ok(derived.effectiveAvDelayMs !== derived.prIntervalMs)
 })

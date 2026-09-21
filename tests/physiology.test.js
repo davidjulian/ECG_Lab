@@ -194,3 +194,19 @@ test('reset restores organized activity and hyperkalemic sine waves are not labe
   const potassium = build({ potassiumMEqL: 9 })
   assert.equal(physiologyToRhythmId(potassium.derived), 'hyperkalemia')
 })
+
+
+test('maximal sympathetic activity reaches about 185 bpm with coordinated 1:1 conduction', () => {
+  const baseline = build({})
+  const stimulated = build({ sympatheticTone: 100, parasympatheticTone: 0 })
+  near(baseline.derived.effectiveSaRate, 75)
+  near(stimulated.derived.effectiveSaRate, 185, 1)
+  assert.equal(stimulated.derived.ventricularRateBpm, 185)
+  assert.equal(stimulated.derived.avBlockPattern, null)
+  assert.equal(stimulated.timing.atria.length, stimulated.timing.ventricles.length)
+  assert.ok(stimulated.timing.atria.every(event => !event.blocked))
+  assert.ok(stimulated.derived.effectiveAvDelayMs < baseline.derived.effectiveAvDelayMs)
+  assert.ok(stimulated.derived.effectiveAvRecoveryMs < baseline.derived.effectiveAvRecoveryMs)
+  const suppressed = build({ saAutomaticity: 0, sympatheticTone: 100, parasympatheticTone: 0 })
+  assert.equal(suppressed.derived.effectiveSaRate, 0)
+})

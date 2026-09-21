@@ -1083,10 +1083,13 @@ function applyAutonomicTone(phys) {
   // matches its effective value until a physiological influence changes it.
   const symp = (phys.sympatheticTone - 20) / 100
   const para = (phys.parasympatheticTone - 20) / 100
+  // At the default 75 bpm baseline, maximal sympathetic activity with
+  // parasympathetic withdrawal gives approximately 185 bpm. Relative teaching
+  // scales, not measured nerve activity or an individual maximum heart rate.
   const potassium = phys.potassiumMEqL > 7.5 ? smoothstep((phys.potassiumMEqL - 7.5) / 1.0) : 0
   const avModifier = clamp(1 - .5 * symp + .65 * para + potassium, .45, 2.5)
   return {
-    effectiveSaRate: phys.saAutomaticity === 0 ? 0 : clamp(phys.saAutomaticity * (1 + .8 * symp - .6 * para) * (1 - .5 * potassium), 10, 260),
+    effectiveSaRate: phys.saAutomaticity === 0 ? 0 : clamp(phys.saAutomaticity * (1 + 1.68 * symp - .6 * para) * (1 - .5 * potassium), 10, 260),
     effectiveAvDelayMs: phys.avDelayMs * avModifier,
     effectiveAvRefractoryMs: phys.avRefractoryMs * avModifier,
     effectiveAvRecoveryMs: phys.avRecoveryMs * avModifier,

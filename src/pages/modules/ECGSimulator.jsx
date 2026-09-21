@@ -72,7 +72,7 @@ const PARAM_SECTIONS = [
   {
     id: 'ans',
     label: 'Autonomic Nervous System',
-    description: 'Change autonomic activity to modify SA firing, AV conduction and recovery, action potential duration, and backup pacemaker activity together.',
+    description: 'Change autonomic activity to modify SA firing, AV conduction and recovery, action potential duration, and backup pacemaker activity together. Percentages represent relative activity in this simulation, not measured nerve activity.',
     keys: ['sympatheticTone', 'parasympatheticTone'],
   },
   {
