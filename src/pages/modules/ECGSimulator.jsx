@@ -555,7 +555,7 @@ export default function ECGSimulator() {
         </section>
 
         {/* ══ ROW 2: interpretation banner | current EKG measurements ═════ */}
-        <div className="flex flex-col md:flex-row gap-3 items-stretch">
+        <div className="flex flex-col md:flex-row gap-3 items-stretch md:items-start">
 
           <Explanation title="Interpretation" resetKey={explanationKey} className="flex-[2.2] min-w-0">
           <div
@@ -579,7 +579,7 @@ export default function ECGSimulator() {
           </Explanation>
 
           {/* Current EKG measurements — a READOUT, not a control */}
-          <Explanation title="Measurements" className="flex-1 min-w-0">
+          <Explanation title="Measurements" resetKey={explanationKey} className="flex-1 min-w-0">
             <p className="text-xs text-gray-400 mb-2">PR describes conducted atrial impulses. QRS and QT include ventricular complexes. Ranges show variation; QTc is omitted for irregular or mixed rhythms.</p>
             <div className="flex flex-wrap gap-x-5 gap-y-1.5 text-sm font-mono">
               <span className="text-gray-400">PR <span className="font-bold tabular-nums" style={{ color: prColor }}>{prText}</span></span>
