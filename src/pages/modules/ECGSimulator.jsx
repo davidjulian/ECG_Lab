@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import ModulePage from '../../components/ModulePage'
 import Explanation from '../../components/Explanation'
 import HeartAnimation from '../../components/HeartAnimation'
+import { PHYSIOLOGY_EXAMPLES, exampleSettings, RESULTING_PROPERTIES } from '../../lib/physiologyExamples'
 import {
   LEADS, LEAD_ORDER,
   ECGVoltage,
@@ -355,6 +356,7 @@ export default function ECGSimulator() {
   const playbackRef = useRef({ playing: true, speed: 1 })
   useEffect(() => { playbackRef.current = { playing, speed } }, [playing, speed])
   const [params, setParams]   = useState(DEFAULT)
+  const [exampleId, setExampleId] = useState('default')
   const [leadId, setLeadId]   = useState('II')
   const physRhythm = useMemo(() => buildRhythmFromPhysiology(params), [params])
   // Which structure's controls the parameter panel is showing, and whether
@@ -419,7 +421,14 @@ export default function ECGSimulator() {
     }
   }, [menuOpen])
 
-  const set = (key, val) => setParams(p => ({ ...p, [key]: val }))
+  const set = (key, val) => {
+    setExampleId('custom')
+    setParams(p => ({ ...p, [key]: val }))
+  }
+  const applyExample = id => {
+    setParams(exampleSettings(id))
+    setExampleId(id)
+  }
 
   const activeSection  = PARAM_SECTIONS.find(s => s.id === openSection) ?? PARAM_SECTIONS[0]
   const changedSettings = PARAM_SECTIONS.flatMap(section =>
@@ -465,7 +474,19 @@ export default function ECGSimulator() {
   const prText = prRange && Math.round(prRange[1]) > Math.round(prRange[0])
     ? `${Math.round(prRange[0])}–${Math.round(prRange[1])} ms`
     : derived.prIntervalMs ? `${Math.round(derived.prIntervalMs)} ms` : '—'
-  const resetSection = () => setParams(p => ({ ...p, ...Object.fromEntries(activeSection.keys.map(k => [k, DEFAULT[k]])) }))
+  const resetSection = () => {
+    setExampleId('custom')
+    setParams(p => ({ ...p, ...Object.fromEntries(activeSection.keys.map(k => [k, DEFAULT[k]])) }))
+  }
+  const showResultingProperties = params.sympatheticTone !== DEFAULT.sympatheticTone
+    || params.parasympatheticTone !== DEFAULT.parasympatheticTone
+    || RESULTING_PROPERTIES.some(property => Math.abs(params[property.key] - derived[property.effective]) > 0.05)
+  const propertyChip = property => (
+    <button key={property.key} type="button" onClick={() => showControls(property.section)}
+      className="rounded-md border border-sky-700/60 bg-sky-950/30 px-2 py-1 text-left text-xs text-sky-100 hover:bg-sky-900/50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-sky-300">
+      {property.label}: <strong className="tabular-nums">{params[property.key]} → {Number(derived[property.effective].toFixed(1))} {property.unit}</strong>
+    </button>
+  )
   const influences = ['ans', 'ions'].includes(openSection)
   const atrialReentry = derived.atrialRegime !== 'organized'
 
@@ -478,6 +499,22 @@ export default function ECGSimulator() {
       wide
     >
       <div className="space-y-3">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+          <label htmlFor="example-rhythm" className="text-sm text-gray-200">Example rhythms</label>
+          <select id="example-rhythm" value={exampleId} onChange={event => applyExample(event.target.value)}
+            aria-describedby="example-rhythm-help"
+            className="max-w-full rounded-lg border border-gray-600 bg-gray-900 px-2 py-1.5 text-sm text-white">
+            <option value="custom" disabled>Custom settings</option>
+            {[...new Set(PHYSIOLOGY_EXAMPLES.map(example => example.group))].map(group => (
+              <optgroup key={group} label={group}>
+                {PHYSIOLOGY_EXAMPLES.filter(example => example.group === group).map(example => (
+                  <option key={example.id} value={example.id}>{example.label}</option>
+                ))}
+              </optgroup>
+            ))}
+          </select>
+          <p id="example-rhythm-help" className="text-xs text-gray-400 flex-1 min-w-[220px]">Each example replaces the tissue settings with one combination that produces a representative pattern. Other mechanisms can produce similar ECGs.</p>
+        </div>
 
         {/* ══ ROW 1: waveform + heart animation ═══════ */}
         <div className="flex flex-col md:flex-row gap-3 items-stretch">
@@ -553,6 +590,21 @@ export default function ECGSimulator() {
             </div>
           )}
         </section>
+
+        {showResultingProperties && (
+          <section aria-label="Resulting tissue properties" className="rounded-lg border border-gray-700 px-3 py-2">
+            <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 mb-2">
+              <h3 className="text-xs font-semibold text-gray-200">Resulting tissue properties</h3>
+              <p className="text-xs text-gray-400">Baseline → with current influences. Model values, not ECG measurements.</p>
+            </div>
+            <div className="flex flex-wrap gap-2">{RESULTING_PROPERTIES.slice(0, 3).map(propertyChip)}</div>
+            <details className="mt-2 text-xs text-gray-300">
+              <summary className="cursor-pointer">More tissue properties</summary>
+              <div className="flex flex-wrap gap-2 mt-2">{RESULTING_PROPERTIES.slice(3).map(propertyChip)}</div>
+              <p className="text-xs text-gray-400 mt-2">Values include combined autonomic effects and any ion effects applied to these properties. Baseline controls remain unchanged. AV recovery can add further conduction delay from beat to beat.</p>
+            </details>
+          </section>
+        )}
 
         {/* ══ ROW 2: interpretation banner | current EKG measurements ═════ */}
         <div className="flex flex-col md:flex-row gap-3 items-stretch md:items-start">
@@ -655,10 +707,10 @@ export default function ECGSimulator() {
 
             <button onClick={resetSection} disabled={!sectionChanged(activeSection)} className="shrink-0 px-3 py-2 rounded-lg text-xs border border-gray-700 text-gray-300 disabled:opacity-40">Reset this structure</button>
             <button
-              onClick={() => setParams(DEFAULT)}
-              disabled={!anyChanged}
+              onClick={() => applyExample('default')}
+              disabled={!anyChanged && exampleId === 'default'}
               className={`shrink-0 px-3 py-2 rounded-lg text-xs border transition-colors ${
-                anyChanged
+                anyChanged || exampleId !== 'default'
                   ? 'text-gray-300 border-gray-700 bg-gray-800 hover:bg-gray-700'
                   : 'text-gray-400 border-gray-800 cursor-not-allowed'
               }`}
