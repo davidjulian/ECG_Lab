@@ -8,12 +8,12 @@ import {
 } from '../../lib/ECGEngine'
 
 // ── Strip canvas config ───────────────────────────────────────────────────────
-// Shortened from the original 820×150 — all grid/trace drawing below is a
-// pure function of the w/h passed in, so this needed no other changes.
-const SW = 760, SH = 115
+// Keep one voltage scale across cases, with room for both tall R waves
+// and deep negative PVC deflections (plus stroke and baseline noise).
+const SW = 760, SH = 210
 const PX_MS = 0.20
 const PX_MV = 60
-const BL = 0.58
+const BL = 0.55
 const EMERALD     = '#10b981'
 const LEAD_AXIS   = LEADS.II.axisDeg
 
