@@ -17,8 +17,13 @@ export default function AboutModal() {
             className="px-3 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-sm">Close</button>
         </div>
         <div className="space-y-4 text-sm leading-relaxed">
-          <p><strong className="text-white">Original creator: Jacob Walker, UF BME class of 2027</strong></p>
-          <p>Development assistance from <strong className="text-white">Claude Code</strong> and <strong className="text-white">OpenAI Codex</strong></p>
+          <p><strong className="block text-white">Original creator and primary developer</strong>
+            Jacob Walker, UF BME Class of 2027</p>
+          <p><strong className="block text-white">Additional design and editing</strong>
+            David Julian, Ph.D.</p>
+          <p><strong className="block text-white">Development assistance</strong>
+            Claude Code and OpenAI Codex</p>
+          <p>© 2026 Jacob Walker and David Julian.</p>
         </div>
       </dialog>
     </>
