@@ -1189,30 +1189,45 @@ function applyIonEffects(waves, k, ca, derived) {
   derived.potassiumMEqL = k
   derived.calciumMgDl   = ca
 
-  if (k > 8.5) {
-    // QRS-T merger: replace the whole complex with one wide low-frequency blob.
-    // QRS/QT are no longer meaningfully measurable — that's the point being
-    // taught — so null them rather than report a stale pre-merge number.
-    const qWaves = out.filter(w => w.name === 'Q')
-    const markers = qWaves.length ? qWaves : out.filter(w => w.name === 'R')
-    out = out.filter(w => !['Q', 'R', 'S', 'T', 'ST', 'U'].includes(w.name))
-    out.push(...markers.map(w => ({ name: 'R', amplitude: 0.9, center: w.center + 150, sigma: 220, axisDeg: 30 })))
-    derived.ionAlert = 'Sine-wave pattern — QRS and T have merged. Immediately life-threatening.'
-    derived.qrsDurationMs = null
-    derived.qtIntervalMs  = null
-  } else if (k >= 7.5) {
-    const t = smoothstep((k - 7.5) / 1.0)
-    out = out.map(w => (w.name === 'Q' || w.name === 'R' || w.name === 'S')
-      ? { ...w, sigma: w.sigma * lerp(1, 1.8, t) } : w)
-    derived.ionAlert = 'Ventricular conduction is slowing globally — approaching electrical failure.'
-  } else if (k >= 6.5) {
-    const t = smoothstep((k - 6.5) / 1.0)
-    out = out.map(w => w.name === 'P' ? { ...w, amplitude: w.amplitude * lerp(1, 0.05, t) } : w)
-    derived.ionAlert = 'Atrial muscle is significantly depolarized — P waves are flattening.'
-  } else if (k >= 5.5) {
-    const t = smoothstep((k - 5.5) / 1.0)
-    out = out.map(w => w.name === 'T' ? { ...w, amplitude: w.amplitude * lerp(1, 2.2, t) + 0.15 * t, sigma: w.sigma * lerp(1, 0.6, t) } : w)
+  // Illustrative overlapping effects, not an empirical potassium-to-ECG fit.
+  // Rebuild from the unmodified beat each time, then retain earlier changes
+  // as conduction slows and the QRS/T complex progressively merges.
+  if (k >= 5.5) {
+    const tenting = smoothstep((k - 5.5) / 1.0)
+    const atrialLoss = smoothstep((k - 6.5) / 1.0)
+    const widening = smoothstep((k - 7.5) / 1.0)
+    const merger = smoothstep((k - 8.0) / 1.0)
+    out = out.map(w => {
+      if (w.name === 'T') return { ...w,
+        amplitude: w.amplitude * lerp(1, 2.2, tenting) + 0.15 * tenting,
+        sigma: w.sigma * lerp(1, .6, tenting),
+      }
+      if (w.name === 'P') return { ...w, amplitude: w.amplitude * lerp(1, .05, atrialLoss) }
+      if (['Q', 'R', 'S'].includes(w.name)) return { ...w, sigma: w.sigma * lerp(1, 1.8, widening) }
+      return w
+    })
     derived.ionAlert = 'T waves are becoming tall, narrow, and symmetric ("tented").'
+    if (atrialLoss > 0) derived.ionAlert = 'P waves are flattening while peaked T waves persist.'
+    if (widening > 0) derived.ionAlert = 'QRS complexes are widening while P waves remain small and T waves remain peaked.'
+    if (merger > 0) {
+      const qWaves = out.filter(w => w.name === 'Q')
+      const markers = qWaves.length ? qWaves : out.filter(w => w.name === 'R')
+      const ventricularNames = ['Q', 'R', 'S', 'T', 'ST', 'U']
+      // Crossfade the broadened complexes into the representative merged wave.
+      // Keep the original beat markers, so no extra ventricular beats appear.
+      out = out.flatMap(w => ventricularNames.includes(w.name)
+        ? merger < 1 ? [{ ...w, amplitude: w.amplitude * (1 - merger) }] : []
+        : [w])
+      out.push(...markers.map(w => ({ name: 'R', amplitude: .9 * merger,
+        center: w.center + 150, sigma: 220, axisDeg: 30, beatId: w.beatId,
+      })))
+      derived.ionAlert = merger >= .5
+        ? 'Sine-wave pattern — QRS and T are merging. Immediately life-threatening.'
+        : 'QRS and T are progressively merging as ventricular conduction deteriorates.'
+      // Separate interval measurements are misleading during QRS/T merger.
+      derived.qrsDurationMs = null
+      derived.qtIntervalMs = null
+    }
   } else if (k < 3.5) {
     const t = smoothstep((3.5 - k) / 1.5)   // 0 at 3.5, 1 at 2.0
     out = out.map(w => w.name === 'T' ? { ...w, amplitude: w.amplitude * lerp(1, 0.25, t) } : w)

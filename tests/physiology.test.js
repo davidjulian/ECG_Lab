@@ -210,3 +210,44 @@ test('maximal sympathetic activity reaches about 185 bpm with coordinated 1:1 co
   const suppressed = build({ saAutomaticity: 0, sympatheticTone: 100, parasympatheticTone: 0 })
   assert.equal(suppressed.derived.effectiveSaRate, 0)
 })
+
+
+test('hyperkalemia retains peaked T waves and attenuated P waves across stage boundaries', () => {
+  const wave = (k, name) => build({ potassiumMEqL: k }).waves.find(w => w.name === name)
+  const normalT = wave(4, 'T')
+  const peak64 = wave(6.4, 'T')
+  for (const k of [6.5, 7, 7.5, 7.6, 8]) {
+    const t = wave(k, 'T')
+    assert.ok(t.amplitude >= peak64.amplitude, `T amplitude reset at ${k}`)
+    assert.ok(t.sigma < normalT.sigma, `T width reset at ${k}`)
+  }
+  const normalP = wave(4, 'P')
+  for (const k of [7.5, 7.6, 8]) assert.ok(wave(k, 'P').amplitude <= normalP.amplitude * .051)
+  assert.ok(wave(8, 'R').sigma > wave(7.5, 'R').sigma)
+})
+
+test('potassium morphology changes continuously at the old 6.5, 7.5 and 8.5 cutoffs', () => {
+  for (const boundary of [6.5, 7.5, 8.5]) {
+    const before = build({ potassiumMEqL: boundary - .00001 })
+    const after = build({ potassiumMEqL: boundary + .00001 })
+    for (let fraction = 0; fraction < 1; fraction += .002) {
+      const v1 = ECGVoltage(fraction * before.cycleMs, before.cycleMs, before.waves, 60, before.nativeCycleMs)
+      const v2 = ECGVoltage(fraction * after.cycleMs, after.cycleMs, after.waves, 60, after.nativeCycleMs)
+      assert.ok(Math.abs(v1 - v2) < .01, `Abrupt voltage change at K=${boundary}`)
+    }
+  }
+})
+
+test('QRS-T merger fades in before the maximum potassium setting and remains finite', () => {
+  const partial = build({ potassiumMEqL: 8.5 })
+  const full = build({ potassiumMEqL: 9 })
+  assert.ok(partial.waves.some(w => w.name === 'T' && w.amplitude > 0))
+  assert.ok(partial.waves.some(w => w.name === 'R' && w.sigma === 220 && w.amplitude > 0 && w.amplitude < .9))
+  assert.ok(!full.waves.some(w => w.name === 'T'))
+  assert.equal(partial.derived.qtIntervalMs, null)
+  assert.equal(full.derived.qrsDurationMs, null)
+  for (let k = 2; k <= 9; k += .1) {
+    const r = build({ potassiumMEqL: k })
+    for (let t = 0; t < r.cycleMs; t += 20) assert.ok(Number.isFinite(ECGVoltage(t, r.cycleMs, r.waves, 60, r.nativeCycleMs)))
+  }
+})

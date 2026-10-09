@@ -859,7 +859,7 @@ export default function ECGSimulator() {
                     value={potassiumMEqL} min={2.0} max={9.0} step={0.1} unit=" mEq/L"
                     color={potassiumMEqL > 7 || potassiumMEqL < 2.5 ? '#ef4444' : (potassiumMEqL > 5.5 || potassiumMEqL < 3.5) ? '#f59e0b' : '#10b981'}
                     onChange={v => set('potassiumMEqL', v)}
-                    hint="K+ gradient determines resting membrane potential (Nernst equation). Low K+ hyperpolarizes cells and prolongs action potentials. High K+ depolarizes cells and slows conduction globally."
+                    hint="K+ gradient determines resting membrane potential (Nernst equation). Low K+ hyperpolarizes cells and prolongs action potentials. High K+ depolarizes cells and slows conduction globally. ECG changes overlap as K+ rises; concentrations and transitions are illustrative, not calibrated clinical thresholds."
                   />
                   {derived.ionAlert && (
                     <Explanation resetKey={explanationKey} className="mt-2"><p className="text-xs mt-1.5 leading-snug" style={{ color: derived.hyperkalemiaAlert ? '#ef4444' : '#f59e0b' }}>
