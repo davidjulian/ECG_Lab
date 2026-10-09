@@ -24,7 +24,8 @@ export default function AboutModal() {
           <p><strong className="block text-white">Development assistance</strong>
             Claude Code and OpenAI Codex</p>
           <p><strong className="block text-white">Contact</strong>
-            <a href="mailto:djulian@ufl.edu" className="text-emerald-300 underline underline-offset-2 hover:text-emerald-200">djulian@ufl.edu</a></p>
+            <span className="block">Jacob Walker: <a href="mailto:jacob.walker@ufl.edu" className="text-emerald-300 underline underline-offset-2 hover:text-emerald-200">jacob.walker@ufl.edu</a></span>
+            <span className="block">David Julian: <a href="mailto:djulian@ufl.edu" className="text-emerald-300 underline underline-offset-2 hover:text-emerald-200">djulian@ufl.edu</a></span></p>
           <p>© 2026 Jacob Walker and David Julian.</p>
         </div>
       </dialog>
