@@ -23,6 +23,8 @@ export default function AboutModal() {
             David Julian, Ph.D.</p>
           <p><strong className="block text-white">Development assistance</strong>
             Claude Code and OpenAI Codex</p>
+          <p><strong className="block text-white">Contact</strong>
+            <a href="mailto:djulian@ufl.edu" className="text-emerald-300 underline underline-offset-2 hover:text-emerald-200">djulian@ufl.edu</a></p>
           <p>© 2026 Jacob Walker and David Julian.</p>
         </div>
       </dialog>
